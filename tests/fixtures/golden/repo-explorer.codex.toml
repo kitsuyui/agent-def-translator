@@ -1,0 +1,7 @@
+# Generated from repo-explorer.toml by agent-def-translator.
+name = "repo-explorer"
+description = "Read repository context and summarize relevant files."
+developer_instructions = "Inspect repository rules, locate the relevant files, and report concise findings\nwith file paths. Do not edit files."
+model = "gpt-5.4-mini"
+sandbox_mode = "read-only"
+model_reasoning_effort = "medium"

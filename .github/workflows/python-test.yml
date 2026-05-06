@@ -1,0 +1,54 @@
+name: Test
+on:
+  # pull-request events are not triggered when a PR is merged
+  # push events are not triggered when a PR created from a fork repository
+  # So we need both to run tests on every PR and after merging
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  actionlint:
+    uses: kitsuyui/gh-actions-workflows/.github/workflows/actionlint.yml@main
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        id: setup-python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: |
+          uv python pin ${{ matrix.python }}
+          uv sync
+
+      - name: Lint
+        run: uv run poe check
+
+      - name: Check Python version
+        run: |
+          actual_version=$(uv run python --version)
+          expected_version="Python ${{ matrix.python }}"
+          if [[ "$actual_version" != *"$expected_version"* ]]; then
+            echo "Expected $expected_version, but got $actual_version"
+            exit 1
+          fi
+
+      - name: Test
+        run: uv run poe test
+
+      - name: Coverage
+        run: uv run poe coverage-xml

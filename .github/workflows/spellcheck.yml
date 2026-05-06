@@ -1,0 +1,8 @@
+name: Spellcheck
+on:
+  - pull_request
+permissions:
+  contents: read
+jobs:
+  check:
+    uses: kitsuyui/gh-actions-workflows/.github/workflows/spellcheck.yml@main
