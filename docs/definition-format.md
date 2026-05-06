@@ -41,6 +41,8 @@ with file paths. Do not edit files.
 ## Target Tables
 
 Target-specific fields live under `[targets.<target>]`.
+See [Platform references](references.md) for the official documentation used to
+ground target-specific output formats.
 
 ```toml
 [targets.claude]

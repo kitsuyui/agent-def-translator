@@ -92,6 +92,9 @@ file is missing or stale.
 - [CLI usage](docs/cli.md): command reference and common workflows.
 - [Definition format](docs/definition-format.md): TOML fields, target tables,
   prompt composition, and output paths.
+- [Platform references](docs/references.md): official documentation used to
+  ground target-specific output formats, plus adjacent future-scope concepts
+  such as MCP.
 - [Development](docs/development.md): local setup, tests, checks, and optional
   E2E smoke tests.
 
@@ -118,6 +121,10 @@ generated = generate(
 - Canonical definitions live in TOML files.
 - Platform-specific differences live in `[targets.<target>]` tables.
 - Generated files are deterministic and disposable.
+- The canonical format captures shared role intent; native platform files are
+  generated as target-specific projections.
+- MCP server configuration is not translated yet; it is tracked as future scope
+  in [Platform references](docs/references.md).
 - Concrete workflow skills are out of scope; examples are intentionally tiny,
   such as `examples/skills/hello/SKILL.md`.
 
