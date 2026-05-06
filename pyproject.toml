@@ -1,0 +1,130 @@
+[project]
+name = "agent-def-translator"
+dynamic = ["version"]
+description = "Translate canonical coding-agent definitions into platform-native agent artifacts."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Yui KITSU", email = "kitsuyui+github@kitsuyui.com" },
+]
+keywords = ["agents", "codex", "claude", "copilot", "code-assistant"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+  "tomli; python_version < '3.11'",
+]
+
+[project.urls]
+Homepage = "https://github.com/kitsuyui/agent-def-translator"
+Repository = "https://github.com/kitsuyui/agent-def-translator"
+Issues = "https://github.com/kitsuyui/agent-def-translator/issues"
+
+[project.scripts]
+agent-def-translator = "agent_def_translator.cli:main"
+
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-data = { "agent_def_translator" = ["py.typed"] }
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+write_to = "src/agent_def_translator/_version.py"
+version_scheme = "only-version"
+local_scheme = "no-local-version"
+fallback_version = "0.1.0"
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "pytest-cov",
+  "poethepoet",
+  "setuptools-scm",
+  "ruff",
+  "mypy",
+]
+
+[tool.ruff]
+line-length = 79
+extend-exclude = [
+  "src/agent_def_translator/_version.py",
+]
+
+[tool.ruff.lint]
+select = [
+  "A",
+  "ANN",
+  "B",
+  "C4",
+  "C90",
+  "COM",
+  "E",
+  "F",
+  "I",
+  "ARG",
+  "PTH",
+  "PERF",
+  "PLE",
+  "RET",
+  "RUF",
+  "S",
+  "SIM",
+  "SLOT",
+  "UP",
+  "W",
+]
+ignore = [
+  "ANN401",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+  "D",
+  "S101",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.uv]
+exclude-newer = "2 days"
+
+[tool.poe.tasks]
+test = "pytest"
+coverage-xml = "pytest --cov=agent_def_translator --doctest-modules --cov-report=xml"
+format = "ruff format src/agent_def_translator tests"
+e2e = "bash scripts/e2e-smoke.sh"
+e2e-live = "bash scripts/e2e-smoke.sh --live"
+check = [
+  { cmd = "ruff check src/agent_def_translator tests" },
+  { cmd = "mypy src/agent_def_translator tests" },
+]
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_any_decorated = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_return_any = true
