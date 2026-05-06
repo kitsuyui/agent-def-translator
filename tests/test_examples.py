@@ -61,3 +61,21 @@ def test_mcp_example_is_project_agnostic() -> None:
         "bridge",
     ]
     assert not any(term in text for term in forbidden_terms)
+
+
+def test_plugin_definition_example_is_project_agnostic() -> None:
+    text = (
+        ROOT / "examples" / "plugin-definitions" / "hello-bundle.toml"
+    ).read_text(
+        encoding="utf-8",
+    )
+
+    forbidden_terms = [
+        "ss",
+        "my-coding-agents",
+        "nightly",
+        "orchestrator",
+        "handoff",
+        "bridge",
+    ]
+    assert not any(term in text for term in forbidden_terms)

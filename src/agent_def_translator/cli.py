@@ -9,12 +9,15 @@ from agent_def_translator.core import (
     Target,
     check_drift,
     check_mcp_config_drift,
+    check_plugin_drift,
     check_skill_drift,
     generate,
     generate_mcp_configs,
+    generate_plugins,
     generate_skills,
     validate_definitions,
     validate_mcp_config_definitions,
+    validate_plugin_definitions,
     validate_skill_definitions,
 )
 
@@ -119,6 +122,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     _add_definition_args(mcp_diff, output=True)
 
+    plugin = subparsers.add_parser(
+        "plugin",
+        help="Work with plugin bundle definition files.",
+    )
+    plugin_subparsers = plugin.add_subparsers(
+        dest="resource_command",
+        required=True,
+    )
+    plugin_validate = plugin_subparsers.add_parser(
+        "validate",
+        help="Validate plugin bundle definition TOML files.",
+    )
+    _add_definition_args(plugin_validate, output=False)
+    plugin_translate = plugin_subparsers.add_parser(
+        "translate",
+        help="Generate platform-native plugin bundles.",
+    )
+    _add_definition_args(plugin_translate, output=True)
+    plugin_diff = plugin_subparsers.add_parser(
+        "diff",
+        help="Check whether generated plugin bundles are up to date.",
+    )
+    _add_definition_args(plugin_diff, output=True)
+
     validate = subparsers.add_parser(
         "validate",
         help="Deprecated alias for subagent validate.",
@@ -203,7 +230,7 @@ def _normalized_command(args: argparse.Namespace) -> tuple[str, str]:
         return aliases[args.command]
     if args.command == "agent":
         return ("subagent", args.resource_command)
-    if args.command in {"subagent", "skill", "mcp"}:
+    if args.command in {"subagent", "skill", "mcp", "plugin"}:
         return (args.command, args.resource_command)
     raise AssertionError(f"unhandled command: {args.command}")
 
@@ -246,6 +273,9 @@ def _run_command(
         ("mcp", "validate"): _run_mcp_validate,
         ("mcp", "translate"): _run_mcp_translate,
         ("mcp", "diff"): _run_mcp_diff,
+        ("plugin", "validate"): _run_plugin_validate,
+        ("plugin", "translate"): _run_plugin_translate,
+        ("plugin", "diff"): _run_plugin_diff,
     }
     try:
         handler = handlers[command]
@@ -341,6 +371,38 @@ def _run_mcp_translate(args: argparse.Namespace) -> int:
 
 def _run_mcp_diff(args: argparse.Namespace) -> int:
     drifted = check_mcp_config_drift(
+        definitions_dir=Path(args.definitions_dir),
+        output_dir=Path(args.output_dir),
+        targets=_targets(args.target),
+    )
+    for path in drifted:
+        print(path.as_posix())
+    return 1 if drifted else 0
+
+
+def _run_plugin_validate(args: argparse.Namespace) -> int:
+    definitions = validate_plugin_definitions(
+        Path(args.definitions_dir),
+        targets=_targets(args.target),
+    )
+    for definition in definitions:
+        print(definition.source_path.as_posix())
+    return 0
+
+
+def _run_plugin_translate(args: argparse.Namespace) -> int:
+    artifacts = generate_plugins(
+        definitions_dir=Path(args.definitions_dir),
+        output_dir=Path(args.output_dir),
+        targets=_targets(args.target),
+    )
+    for artifact in artifacts:
+        print(artifact.output_path.as_posix())
+    return 0
+
+
+def _run_plugin_diff(args: argparse.Namespace) -> int:
+    drifted = check_plugin_drift(
         definitions_dir=Path(args.definitions_dir),
         output_dir=Path(args.output_dir),
         targets=_targets(args.target),

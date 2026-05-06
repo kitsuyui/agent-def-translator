@@ -4,9 +4,9 @@ Skill definitions are TOML files. Each file describes one portable skill and
 renders target-native `SKILL.md` files for Claude Code, Codex, and GitHub
 Copilot.
 
-`agent-def-translator` translates skill definitions only. It does not package
-plugins, install skills, manage marketplaces, provision MCP servers, or execute
-the generated skills.
+`agent-def-translator` translates skill definitions only. It does not install
+skills, manage marketplaces, provision MCP servers, or execute the generated
+skills. Plugin packaging is handled separately by the `plugin` resource.
 
 ## File Naming
 
@@ -154,5 +154,6 @@ The generated skill directories are disposable target projections. Keep reusable
 intent in the TOML definition, and keep platform-specific behavior in
 `[targets.<target>]` tables.
 
-Plugin packaging is intentionally separate. A future `plugin` resource should
-own plugin manifests, bundling, and distribution concerns.
+Plugin packaging is intentionally separate. Use `plugin translate` to bundle
+generated skill directories with generated subagents, MCP config fragments, and
+plugin manifests.

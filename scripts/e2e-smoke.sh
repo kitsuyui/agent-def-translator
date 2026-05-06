@@ -61,6 +61,8 @@ mkdir -p "${WORK_ROOT}/definitions/skills/hello/references"
 mkdir -p "${WORK_ROOT}/definitions/skills/hello/assets"
 mkdir -p "${WORK_ROOT}/definitions/skills/hello/templates"
 mkdir -p "${WORK_ROOT}/definitions/mcp"
+mkdir -p "${WORK_ROOT}/definitions/plugins"
+mkdir -p "${WORK_ROOT}/definitions/plugins/runtime"
 
 cat > "${WORK_ROOT}/definitions/agents/hello.toml" <<'EOF'
 name = "hello"
@@ -136,6 +138,44 @@ EOF
 
 printf '\000hello\377' > "${WORK_ROOT}/definitions/skills/hello/assets/sample.bin"
 
+cat > "${WORK_ROOT}/definitions/plugins/hello-bundle.toml" <<'EOF'
+name = "hello-bundle"
+description = "Bundle generated hello components."
+version = "0.1.0"
+author = "Example Maintainer"
+repository = "https://example.com/hello-bundle"
+homepage = "https://example.com/hello-bundle"
+license = "MIT"
+keywords = ["agents", "skills", "mcp"]
+
+[components]
+subagents = true
+skills = true
+mcp = true
+resources_dir = "runtime"
+
+[interface]
+display_name = "Hello Bundle"
+short_description = "Generated hello components."
+long_description = "A tiny plugin bundle for examples."
+developer_name = "Example Maintainer"
+category = "Productivity"
+capabilities = ["Read"]
+website_url = "https://example.com/hello-bundle"
+
+[marketplace]
+name = "hello-local"
+display_name = "Hello Local Plugins"
+source_path = "./plugins/hello-bundle"
+installation = "AVAILABLE"
+authentication = "ON_INSTALL"
+category = "Productivity"
+EOF
+
+cat > "${WORK_ROOT}/definitions/plugins/runtime/README.md" <<'EOF'
+# Runtime
+EOF
+
 uv run agent-def-translator subagent validate \
   --definitions-dir "${WORK_ROOT}/definitions/agents" \
   > "${WORK_ROOT}/validate.txt"
@@ -195,6 +235,21 @@ uv run agent-def-translator skill diff \
   --output-dir "${WORK_ROOT}/generated" \
   > "${WORK_ROOT}/skill-diff.txt"
 
+uv run agent-def-translator plugin validate \
+  --definitions-dir "${WORK_ROOT}/definitions/plugins" \
+  > "${WORK_ROOT}/plugin-validate.txt"
+require_marker "hello-bundle.toml" "${WORK_ROOT}/plugin-validate.txt"
+
+uv run agent-def-translator plugin translate \
+  --definitions-dir "${WORK_ROOT}/definitions/plugins" \
+  --output-dir "${WORK_ROOT}/generated" \
+  > "${WORK_ROOT}/plugin-translate.txt"
+
+uv run agent-def-translator plugin diff \
+  --definitions-dir "${WORK_ROOT}/definitions/plugins" \
+  --output-dir "${WORK_ROOT}/generated" \
+  > "${WORK_ROOT}/plugin-diff.txt"
+
 require_marker "Do not use tools." \
   "${WORK_ROOT}/generated/claude/agents/hello.md"
 require_marker 'sandbox_mode = "read-only"' \
@@ -225,6 +280,22 @@ require_marker 'Hello, {name}' \
   "${WORK_ROOT}/generated/copilot/skills/hello/templates/greeting.txt"
 cmp "${WORK_ROOT}/definitions/skills/hello/assets/sample.bin" \
   "${WORK_ROOT}/generated/copilot/skills/hello/assets/sample.bin"
+require_marker '"name": "hello-bundle"' \
+  "${WORK_ROOT}/generated/claude/plugins/hello-bundle/.claude-plugin/plugin.json"
+require_marker '"displayName": "Hello Bundle"' \
+  "${WORK_ROOT}/generated/codex/plugins/hello-bundle/.codex-plugin/plugin.json"
+require_marker '"agents": "./agents/"' \
+  "${WORK_ROOT}/generated/copilot/plugins/hello-bundle/plugin.json"
+require_marker '"openaiDeveloperDocs"' \
+  "${WORK_ROOT}/generated/claude/plugins/hello-bundle/.mcp.json"
+require_marker '"mcpServers"' \
+  "${WORK_ROOT}/generated/codex/plugins/hello-bundle/.mcp.json"
+require_marker 'Reply with one short greeting.' \
+  "${WORK_ROOT}/generated/codex/plugins/hello-bundle/skills/hello/SKILL.md"
+require_marker '# Runtime' \
+  "${WORK_ROOT}/generated/copilot/plugins/hello-bundle/README.md"
+require_marker '"path": "./plugins/hello-bundle"' \
+  "${WORK_ROOT}/generated/codex/marketplace.json"
 
 uv build --out-dir "${WORK_ROOT}/dist" > "${WORK_ROOT}/build.log"
 ls "${WORK_ROOT}/dist"/*.whl > "${WORK_ROOT}/wheel.txt"

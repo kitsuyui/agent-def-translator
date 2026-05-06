@@ -1,0 +1,30 @@
+name = "hello-bundle"
+description = "Bundle generated hello components."
+version = "0.1.0"
+author = "Example Maintainer"
+repository = "https://example.com/hello-bundle"
+homepage = "https://example.com/hello-bundle"
+license = "MIT"
+keywords = ["agents", "skills", "mcp"]
+
+[components]
+subagents = true
+skills = true
+mcp = true
+
+[interface]
+display_name = "Hello Bundle"
+short_description = "Generated hello components."
+long_description = "A tiny plugin bundle for examples."
+developer_name = "Example Maintainer"
+category = "Productivity"
+capabilities = ["Read"]
+website_url = "https://example.com/hello-bundle"
+
+[marketplace]
+name = "hello-local"
+display_name = "Hello Local Plugins"
+source_path = "./plugins/hello-bundle"
+installation = "AVAILABLE"
+authentication = "ON_INSTALL"
+category = "Productivity"

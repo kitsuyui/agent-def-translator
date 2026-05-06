@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import textwrap
 from pathlib import Path
 
@@ -8,22 +9,28 @@ import pytest
 from agent_def_translator import (
     DefinitionError,
     McpConfigDefinition,
+    PluginDefinition,
     SkillDefinition,
     Target,
     check_drift,
     check_mcp_config_drift,
+    check_plugin_drift,
     check_skill_drift,
     generate,
     generate_mcp_configs,
+    generate_plugins,
     generate_skills,
     load_definition,
     load_mcp_config_definition,
+    load_plugin_definition,
     load_skill_definition,
     render,
     render_mcp_config,
+    render_plugin_manifest,
     render_skill,
     validate_definitions,
     validate_mcp_config_definitions,
+    validate_plugin_definitions,
     validate_skill_definitions,
 )
 
@@ -604,3 +611,162 @@ def test_mcp_target_rejects_unknown_fields(tmp_path: Path) -> None:
 
     with pytest.raises(DefinitionError, match=r"unknown fields: typo"):
         load_mcp_config_definition(spec)
+
+
+def write_plugin_sample(root: Path) -> Path:
+    definitions_dir = root / "plugins"
+    definitions_dir.mkdir()
+    (definitions_dir / "runtime").mkdir()
+    (definitions_dir / "runtime" / "README.md").write_text(
+        "# Runtime\n",
+        encoding="utf-8",
+    )
+    spec = definitions_dir / "hello-bundle.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "hello-bundle"
+            description = "Bundle generated hello components."
+            version = "0.1.0"
+            author = "Example Maintainer"
+            repository = "https://example.com/hello-bundle"
+            homepage = "https://example.com/hello-bundle"
+            license = "MIT"
+            keywords = ["agents", "skills", "mcp"]
+
+            [components]
+            subagents = true
+            skills = true
+            mcp = true
+            resources_dir = "runtime"
+
+            [interface]
+            display_name = "Hello Bundle"
+            short_description = "Generated hello components."
+            long_description = "A tiny plugin bundle for examples."
+            developer_name = "Example Maintainer"
+            category = "Productivity"
+            capabilities = ["Read"]
+            website_url = "https://example.com/hello-bundle"
+
+            [marketplace]
+            name = "hello-local"
+            display_name = "Hello Local Plugins"
+            source_path = "./plugins/hello-bundle"
+            installation = "AVAILABLE"
+            authentication = "ON_INSTALL"
+            category = "Productivity"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    return spec
+
+
+def test_render_plugin_manifest_all_targets(tmp_path: Path) -> None:
+    spec = write_plugin_sample(tmp_path)
+    definition = load_plugin_definition(spec, root_dir=tmp_path / "plugins")
+
+    assert isinstance(definition, PluginDefinition)
+    claude = json.loads(render_plugin_manifest(definition, Target.CLAUDE))
+    codex = json.loads(render_plugin_manifest(definition, Target.CODEX))
+    copilot = json.loads(render_plugin_manifest(definition, Target.COPILOT))
+
+    assert claude["name"] == "hello-bundle"
+    assert claude["author"] == {"name": "Example Maintainer"}
+    assert codex["skills"] == "./skills/"
+    assert codex["interface"]["displayName"] == "Hello Bundle"
+    assert copilot["agents"] == "./agents/"
+    assert copilot["skills"] == "./skills/"
+
+
+def test_generate_plugins_and_drift_check(tmp_path: Path) -> None:
+    write_sample(tmp_path)
+    write_skill_sample(tmp_path)
+    write_mcp_sample(tmp_path)
+    write_plugin_sample(tmp_path)
+    output_dir = tmp_path / "generated"
+    generate(definitions_dir=tmp_path / "agents", output_dir=output_dir)
+    generate_skills(definitions_dir=tmp_path / "skills", output_dir=output_dir)
+    generate_mcp_configs(
+        definitions_dir=tmp_path / "mcp",
+        output_dir=output_dir,
+    )
+
+    artifacts = generate_plugins(
+        definitions_dir=tmp_path / "plugins",
+        output_dir=output_dir,
+    )
+
+    assert len(artifacts) == 32
+    claude_root = output_dir / "claude" / "plugins" / "hello-bundle"
+    codex_root = output_dir / "codex" / "plugins" / "hello-bundle"
+    copilot_root = output_dir / "copilot" / "plugins" / "hello-bundle"
+    assert (claude_root / ".claude-plugin" / "plugin.json").exists()
+    assert (codex_root / ".codex-plugin" / "plugin.json").exists()
+    assert (copilot_root / "plugin.json").exists()
+    assert (claude_root / "agents" / "sample.md").exists()
+    assert (codex_root / "skills" / "hello" / "SKILL.md").exists()
+    assert (
+        copilot_root / "skills" / "hello" / "assets" / "sample.bin"
+    ).exists()
+    assert (claude_root / ".mcp.json").exists()
+    assert (codex_root / ".mcp.json").exists()
+    assert (copilot_root / ".mcp.json").exists()
+    assert (codex_root / "README.md").read_text(
+        encoding="utf-8",
+    ) == "# Runtime\n"
+    marketplace = json.loads(
+        (output_dir / "codex" / "marketplace.json").read_text(
+            encoding="utf-8",
+        ),
+    )
+    assert marketplace["name"] == "hello-local"
+    assert (
+        marketplace["plugins"][0]["source"]["path"] == "./plugins/hello-bundle"
+    )
+    assert (
+        check_plugin_drift(
+            definitions_dir=tmp_path / "plugins",
+            output_dir=output_dir,
+        )
+        == []
+    )
+
+    generated = codex_root / ".codex-plugin" / "plugin.json"
+    generated.write_text("stale", encoding="utf-8")
+
+    assert check_plugin_drift(
+        definitions_dir=tmp_path / "plugins",
+        output_dir=output_dir,
+    ) == [generated]
+
+
+def test_validate_plugin_definitions(tmp_path: Path) -> None:
+    write_plugin_sample(tmp_path)
+
+    definitions = validate_plugin_definitions(tmp_path / "plugins")
+
+    assert [definition.name for definition in definitions] == ["hello-bundle"]
+
+
+def test_plugin_target_rejects_unknown_fields(tmp_path: Path) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "bad"
+            description = "Bad plugin."
+            version = "0.1.0"
+
+            [targets.codex]
+            typo = "value"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError, match=r"unknown fields: typo"):
+        load_plugin_definition(spec)
