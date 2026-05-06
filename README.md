@@ -10,16 +10,14 @@ or provide an orchestration runtime.
 
 ```mermaid
 flowchart LR
-    source["Canonical agent definition<br/>agents/repo-explorer.toml"]
-    cli["agent-def-translator<br/>validate / translate / diff"]
-    claude["Claude Code agent<br/>generated/claude/agents/repo-explorer.md"]
-    codex["Codex agent<br/>generated/codex/agents/repo-explorer.toml"]
-    copilot["GitHub Copilot agent<br/>generated/copilot/agents/repo-explorer.agent.md"]
+    source["Canonical agent definition"]
+    claude["Definitions for Claude Code"]
+    codex["Definitions for Codex"]
+    copilot["Definitions for GitHub Copilot"]
 
-    source --> cli
-    cli --> claude
-    cli --> codex
-    cli --> copilot
+    source --> claude
+    source --> codex
+    source --> copilot
 ```
 
 ## Status
