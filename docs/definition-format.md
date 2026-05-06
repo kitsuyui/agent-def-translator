@@ -1,6 +1,6 @@
 # Definition Format
 
-Definitions are TOML files. Each file describes one coding-agent role in a
+Definitions are TOML files. Each file describes one subagent role in a
 platform-neutral shape, plus optional target-specific metadata.
 
 ## File Naming
