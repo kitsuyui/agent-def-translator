@@ -174,23 +174,54 @@ def test_cli_deprecated_subagent_aliases_warn(
     assert replacement in captured.err
 
 
-def test_cli_skill_translate_is_reserved(tmp_path: Path) -> None:
+def test_cli_skill_validate_translate_and_diff(tmp_path: Path) -> None:
     definitions_dir = tmp_path / "skills"
     definitions_dir.mkdir()
-
-    assert (
-        main(
+    (definitions_dir / "hello.toml").write_text(
+        "\n".join(
             [
-                "skill",
-                "translate",
-                "--definitions-dir",
-                str(definitions_dir),
-                "--output-dir",
-                str(tmp_path / "generated"),
+                'name = "hello"',
+                'description = "Say hello."',
+                'instructions = "Reply with a greeting."',
+                "",
+                "[targets.codex]",
+                'display_name = "Hello"',
+                "allow_implicit_invocation = true",
             ],
         )
-        == 2
+        + "\n",
+        encoding="utf-8",
     )
+    output_dir = tmp_path / "generated"
+
+    assert (
+        main(["skill", "validate", "--definitions-dir", str(definitions_dir)])
+        == 0
+    )
+    translate_args = [
+        "skill",
+        "translate",
+        "--definitions-dir",
+        str(definitions_dir),
+        "--output-dir",
+        str(output_dir),
+    ]
+    diff_args = [
+        "skill",
+        "diff",
+        "--definitions-dir",
+        str(definitions_dir),
+        "--output-dir",
+        str(output_dir),
+    ]
+    assert main(translate_args) == 0
+    assert main(diff_args) == 0
+
+    generated = output_dir / "codex" / "skills" / "hello" / "SKILL.md"
+    assert generated.exists()
+    generated.write_text("stale", encoding="utf-8")
+
+    assert main(diff_args) == 1
 
 
 def test_cli_mcp_validate_translate_and_diff(tmp_path: Path) -> None:

@@ -103,12 +103,13 @@ uvx agent-def-translator subagent translate \
   --output-dir generated
 ```
 
-The CLI is organized as resource + predicate commands. Subagents and MCP config
-translation are implemented today; `skill translate` is reserved for future
-skill definition translation.
+The CLI is organized as resource + predicate commands. Subagent, skill, and MCP
+config translation are implemented today. Plugin translation is separate future
+scope for plugin manifests, bundling, and distribution concerns.
 
 ```bash
 uvx agent-def-translator subagent translate --definitions-dir agents --output-dir generated
+uvx agent-def-translator skill validate --definitions-dir skills
 uvx agent-def-translator skill translate --definitions-dir skills --output-dir generated
 uvx agent-def-translator mcp validate --definitions-dir mcp
 uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir generated
@@ -121,6 +122,8 @@ uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir genera
   prompt composition, and output paths.
 - [MCP config format](docs/mcp-config-format.md): TOML fields and generated MCP
   config fragments for Claude Code, Codex, and GitHub Copilot.
+- [Skill format](docs/skill-format.md): TOML fields and generated skill
+  directories for Claude Code, Codex, and GitHub Copilot.
 - [Platform references](docs/references.md): official documentation used to
   ground target-specific output formats, plus adjacent future-scope concepts
   such as MCP.
@@ -154,8 +157,9 @@ generated = generate(
   generated as target-specific projections.
 - MCP server implementation is out of scope, but MCP config definitions can be
   translated into target-specific config fragments.
-- Concrete workflow skills are out of scope; examples are intentionally tiny,
-  such as `examples/skills/hello/SKILL.md`.
+- Plugin packaging is out of scope for the current renderer.
+- Concrete workflow skill examples are intentionally tiny, such as
+  `examples/skills/hello/SKILL.md`.
 
 ## License
 

@@ -9,10 +9,13 @@ from agent_def_translator.core import (
     Target,
     check_drift,
     check_mcp_config_drift,
+    check_skill_drift,
     generate,
     generate_mcp_configs,
+    generate_skills,
     validate_definitions,
     validate_mcp_config_definitions,
+    validate_skill_definitions,
 )
 
 
@@ -78,9 +81,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     skill_translate = skill_subparsers.add_parser(
         "translate",
-        help="Translate skill definitions. Reserved for future support.",
+        help="Generate platform-native skill files.",
     )
     _add_definition_args(skill_translate, output=True)
+    skill_validate = skill_subparsers.add_parser(
+        "validate",
+        help="Validate skill definition TOML files.",
+    )
+    _add_definition_args(skill_validate, output=False)
+    skill_diff = skill_subparsers.add_parser(
+        "diff",
+        help="Check whether generated skill files are up to date.",
+    )
+    _add_definition_args(skill_diff, output=True)
 
     mcp = subparsers.add_parser(
         "mcp",
@@ -227,7 +240,9 @@ def _run_command(
         ("subagent", "validate"): _run_subagent_validate,
         ("subagent", "translate"): _run_subagent_translate,
         ("subagent", "diff"): _run_subagent_diff,
+        ("skill", "validate"): _run_skill_validate,
         ("skill", "translate"): _run_skill_translate,
+        ("skill", "diff"): _run_skill_diff,
         ("mcp", "validate"): _run_mcp_validate,
         ("mcp", "translate"): _run_mcp_translate,
         ("mcp", "diff"): _run_mcp_diff,
@@ -272,11 +287,35 @@ def _run_subagent_diff(args: argparse.Namespace) -> int:
 
 
 def _run_skill_translate(args: argparse.Namespace) -> int:
-    del args
-    raise DefinitionError(
-        "skill translation is not implemented yet; "
-        "the command namespace is reserved for future support",
+    artifacts = generate_skills(
+        definitions_dir=Path(args.definitions_dir),
+        output_dir=Path(args.output_dir),
+        targets=_targets(args.target),
     )
+    for artifact in artifacts:
+        print(artifact.output_path.as_posix())
+    return 0
+
+
+def _run_skill_validate(args: argparse.Namespace) -> int:
+    definitions = validate_skill_definitions(
+        Path(args.definitions_dir),
+        targets=_targets(args.target),
+    )
+    for definition in definitions:
+        print(definition.source_path.as_posix())
+    return 0
+
+
+def _run_skill_diff(args: argparse.Namespace) -> int:
+    drifted = check_skill_drift(
+        definitions_dir=Path(args.definitions_dir),
+        output_dir=Path(args.output_dir),
+        targets=_targets(args.target),
+    )
+    for path in drifted:
+        print(path.as_posix())
+    return 1 if drifted else 0
 
 
 def _run_mcp_validate(args: argparse.Namespace) -> int:

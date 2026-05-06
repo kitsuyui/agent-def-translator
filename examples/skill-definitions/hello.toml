@@ -1,0 +1,12 @@
+name = "hello"
+description = "Say hello when the user asks for a greeting."
+instructions = "Reply with one short greeting."
+source_dir = "hello"
+user_invocable = true
+disable_model_invocation = false
+allowed_tools = []
+
+[targets.codex]
+display_name = "Hello"
+short_description = "Say hello."
+allow_implicit_invocation = true

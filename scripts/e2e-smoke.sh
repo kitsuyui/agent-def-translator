@@ -55,6 +55,11 @@ require_marker() {
 cd "${SOURCE_ROOT}"
 rm -rf "${WORK_ROOT}"
 mkdir -p "${WORK_ROOT}/definitions/agents" "${WORK_ROOT}/definitions/prompts"
+mkdir -p "${WORK_ROOT}/definitions/skills"
+mkdir -p "${WORK_ROOT}/definitions/skills/hello/scripts"
+mkdir -p "${WORK_ROOT}/definitions/skills/hello/references"
+mkdir -p "${WORK_ROOT}/definitions/skills/hello/assets"
+mkdir -p "${WORK_ROOT}/definitions/skills/hello/templates"
 mkdir -p "${WORK_ROOT}/definitions/mcp"
 
 cat > "${WORK_ROOT}/definitions/agents/hello.toml" <<'EOF'
@@ -96,6 +101,40 @@ server_name = "openaiDeveloperDocs"
 server_name = "openaiDeveloperDocs"
 tools = ["*"]
 EOF
+
+cat > "${WORK_ROOT}/definitions/skills/hello.toml" <<'EOF'
+name = "hello"
+description = "Say hello when the user asks for a greeting."
+instructions = "Reply with one short greeting."
+source_dir = "hello"
+user_invocable = true
+disable_model_invocation = false
+allowed_tools = []
+
+[targets.codex]
+display_name = "Hello"
+short_description = "Say hello."
+allow_implicit_invocation = true
+EOF
+
+cat > "${WORK_ROOT}/definitions/skills/hello/scripts/hello.sh" <<'EOF'
+#!/usr/bin/env sh
+echo hello
+EOF
+
+cat > "${WORK_ROOT}/definitions/skills/hello/references/usage.md" <<'EOF'
+# Usage
+EOF
+
+cat > "${WORK_ROOT}/definitions/skills/hello/runbook.md" <<'EOF'
+# Runbook
+EOF
+
+cat > "${WORK_ROOT}/definitions/skills/hello/templates/greeting.txt" <<'EOF'
+Hello, {name}
+EOF
+
+printf '\000hello\377' > "${WORK_ROOT}/definitions/skills/hello/assets/sample.bin"
 
 uv run agent-def-translator subagent validate \
   --definitions-dir "${WORK_ROOT}/definitions/agents" \
@@ -141,6 +180,21 @@ uv run agent-def-translator mcp diff \
   --output-dir "${WORK_ROOT}/generated" \
   > "${WORK_ROOT}/mcp-diff.txt"
 
+uv run agent-def-translator skill validate \
+  --definitions-dir "${WORK_ROOT}/definitions/skills" \
+  > "${WORK_ROOT}/skill-validate.txt"
+require_marker "hello.toml" "${WORK_ROOT}/skill-validate.txt"
+
+uv run agent-def-translator skill translate \
+  --definitions-dir "${WORK_ROOT}/definitions/skills" \
+  --output-dir "${WORK_ROOT}/generated" \
+  > "${WORK_ROOT}/skill-translate.txt"
+
+uv run agent-def-translator skill diff \
+  --definitions-dir "${WORK_ROOT}/definitions/skills" \
+  --output-dir "${WORK_ROOT}/generated" \
+  > "${WORK_ROOT}/skill-diff.txt"
+
 require_marker "Do not use tools." \
   "${WORK_ROOT}/generated/claude/agents/hello.md"
 require_marker 'sandbox_mode = "read-only"' \
@@ -153,6 +207,24 @@ require_marker '"openaiDeveloperDocs"' \
   "${WORK_ROOT}/generated/claude/mcp/openai-docs.json"
 require_marker '"tools"' \
   "${WORK_ROOT}/generated/copilot/mcp/openai-docs.json"
+require_marker 'disable-model-invocation: false' \
+  "${WORK_ROOT}/generated/claude/skills/hello/SKILL.md"
+require_marker 'Reply with one short greeting.' \
+  "${WORK_ROOT}/generated/codex/skills/hello/SKILL.md"
+require_marker 'allow_implicit_invocation: true' \
+  "${WORK_ROOT}/generated/codex/skills/hello/agents/openai.yaml"
+require_marker 'user-invocable: true' \
+  "${WORK_ROOT}/generated/copilot/skills/hello/SKILL.md"
+require_marker 'echo hello' \
+  "${WORK_ROOT}/generated/claude/skills/hello/scripts/hello.sh"
+require_marker '# Usage' \
+  "${WORK_ROOT}/generated/codex/skills/hello/references/usage.md"
+require_marker '# Runbook' \
+  "${WORK_ROOT}/generated/claude/skills/hello/runbook.md"
+require_marker 'Hello, {name}' \
+  "${WORK_ROOT}/generated/copilot/skills/hello/templates/greeting.txt"
+cmp "${WORK_ROOT}/definitions/skills/hello/assets/sample.bin" \
+  "${WORK_ROOT}/generated/copilot/skills/hello/assets/sample.bin"
 
 uv build --out-dir "${WORK_ROOT}/dist" > "${WORK_ROOT}/build.log"
 ls "${WORK_ROOT}/dist"/*.whl > "${WORK_ROOT}/wheel.txt"

@@ -31,6 +31,22 @@ def test_hello_skill_example_is_project_agnostic() -> None:
     assert not any(term in text for term in forbidden_terms)
 
 
+def test_skill_definition_example_is_project_agnostic() -> None:
+    text = (ROOT / "examples" / "skill-definitions" / "hello.toml").read_text(
+        encoding="utf-8",
+    )
+
+    forbidden_terms = [
+        "ss",
+        "my-coding-agents",
+        "nightly",
+        "orchestrator",
+        "handoff",
+        "bridge",
+    ]
+    assert not any(term in text for term in forbidden_terms)
+
+
 def test_mcp_example_is_project_agnostic() -> None:
     text = (ROOT / "examples" / "mcp" / "openai-docs.toml").read_text(
         encoding="utf-8",

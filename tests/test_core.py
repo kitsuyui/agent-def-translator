@@ -8,17 +8,23 @@ import pytest
 from agent_def_translator import (
     DefinitionError,
     McpConfigDefinition,
+    SkillDefinition,
     Target,
     check_drift,
     check_mcp_config_drift,
+    check_skill_drift,
     generate,
     generate_mcp_configs,
+    generate_skills,
     load_definition,
     load_mcp_config_definition,
+    load_skill_definition,
     render,
     render_mcp_config,
+    render_skill,
     validate_definitions,
     validate_mcp_config_definitions,
+    validate_skill_definitions,
 )
 
 
@@ -299,6 +305,179 @@ def write_mcp_sample(root: Path) -> Path:
         encoding="utf-8",
     )
     return spec
+
+
+def write_skill_sample(root: Path) -> Path:
+    definitions_dir = root / "skills"
+    definitions_dir.mkdir()
+    bundle_dir = definitions_dir / "hello"
+    (bundle_dir / "scripts").mkdir(parents=True)
+    (bundle_dir / "references").mkdir()
+    (bundle_dir / "assets").mkdir()
+    (bundle_dir / "templates").mkdir()
+    (bundle_dir / "scripts" / "hello.sh").write_text(
+        "#!/usr/bin/env sh\necho hello\n",
+        encoding="utf-8",
+    )
+    (bundle_dir / "references" / "usage.md").write_text(
+        "# Usage\n",
+        encoding="utf-8",
+    )
+    (bundle_dir / "runbook.md").write_text(
+        "# Runbook\n",
+        encoding="utf-8",
+    )
+    (bundle_dir / "templates" / "greeting.txt").write_text(
+        "Hello, {name}\n",
+        encoding="utf-8",
+    )
+    (bundle_dir / "assets" / "sample.bin").write_bytes(b"\x00hello\xff")
+    spec = definitions_dir / "hello.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "hello"
+            description = "Say hello when the user asks for a greeting."
+            instructions = "Reply with one short greeting."
+            source_dir = "hello"
+            user_invocable = true
+            disable_model_invocation = false
+            allowed_tools = []
+
+            [targets.claude]
+            context = "fork"
+            agent = "general-purpose"
+
+            [targets.codex]
+            display_name = "Hello"
+            short_description = "Say hello."
+            allow_implicit_invocation = true
+            [targets.codex.dependencies]
+            tools = ["shell"]
+
+            [targets.copilot]
+            user_invocable = false
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    return spec
+
+
+def test_render_skill_all_targets(tmp_path: Path) -> None:
+    spec = write_skill_sample(tmp_path)
+    definition = load_skill_definition(spec, root_dir=tmp_path / "skills")
+
+    assert isinstance(definition, SkillDefinition)
+    claude = render_skill(definition, Target.CLAUDE)
+    codex = render_skill(definition, Target.CODEX)
+    copilot = render_skill(definition, Target.COPILOT)
+
+    assert 'name: "hello"' in claude
+    assert 'context: "fork"' in claude
+    assert 'agent: "general-purpose"' in claude
+    assert "display_name" not in codex
+    assert "user-invocable: false" in copilot
+    assert "Reply with one short greeting." in copilot
+
+
+def test_generate_skills_and_drift_check(tmp_path: Path) -> None:
+    write_skill_sample(tmp_path)
+    output_dir = tmp_path / "generated"
+
+    artifacts = generate_skills(
+        definitions_dir=tmp_path / "skills",
+        output_dir=output_dir,
+    )
+
+    assert len(artifacts) == 19
+    assert (output_dir / "claude" / "skills" / "hello" / "SKILL.md").exists()
+    assert (
+        output_dir / "claude" / "skills" / "hello" / "scripts" / "hello.sh"
+    ).exists()
+    assert (
+        output_dir / "claude" / "skills" / "hello" / "references" / "usage.md"
+    ).exists()
+    assert (output_dir / "claude" / "skills" / "hello" / "runbook.md").exists()
+    assert (
+        output_dir
+        / "claude"
+        / "skills"
+        / "hello"
+        / "templates"
+        / "greeting.txt"
+    ).exists()
+    assert (
+        output_dir / "claude" / "skills" / "hello" / "assets" / "sample.bin"
+    ).read_bytes() == b"\x00hello\xff"
+    assert (output_dir / "codex" / "skills" / "hello" / "SKILL.md").exists()
+    assert (
+        output_dir / "codex" / "skills" / "hello" / "agents" / "openai.yaml"
+    ).exists()
+    assert (output_dir / "copilot" / "skills" / "hello" / "SKILL.md").exists()
+    assert (
+        check_skill_drift(
+            definitions_dir=tmp_path / "skills",
+            output_dir=output_dir,
+        )
+        == []
+    )
+
+    generated = output_dir / "claude" / "skills" / "hello" / "SKILL.md"
+    generated.write_text("stale", encoding="utf-8")
+
+    assert check_skill_drift(
+        definitions_dir=tmp_path / "skills",
+        output_dir=output_dir,
+    ) == [generated]
+
+
+def test_validate_skill_definitions(tmp_path: Path) -> None:
+    write_skill_sample(tmp_path)
+
+    definitions = validate_skill_definitions(tmp_path / "skills")
+
+    assert [definition.name for definition in definitions] == ["hello"]
+
+
+def test_skill_target_rejects_unknown_fields(tmp_path: Path) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "bad"
+            description = "Bad skill."
+            instructions = "Do the thing."
+
+            [targets.claude]
+            typo = "value"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError, match=r"unknown fields: typo"):
+        load_skill_definition(spec)
+
+
+def test_skill_name_must_use_portable_shape(tmp_path: Path) -> None:
+    spec = tmp_path / "Bad_Name.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "Bad_Name"
+            description = "Bad skill."
+            instructions = "Do the thing."
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError, match="lowercase"):
+        load_skill_definition(spec)
 
 
 def test_render_mcp_config_all_targets(tmp_path: Path) -> None:

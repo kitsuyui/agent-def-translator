@@ -26,14 +26,15 @@ Commands are also available in resource-oriented form:
 ```bash
 uvx agent-def-translator subagent validate --definitions-dir agents
 uvx agent-def-translator subagent translate --definitions-dir agents --output-dir generated
+uvx agent-def-translator skill validate --definitions-dir skills
 uvx agent-def-translator skill translate --definitions-dir skills --output-dir generated
 uvx agent-def-translator mcp validate --definitions-dir mcp
 uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir generated
 ```
 
-Subagent and MCP config translation are implemented today. The `skill`
-namespace is reserved for future skill definition translation and currently
-returns an explicit "not implemented yet" error.
+Subagent, skill, and MCP config translation are implemented today. The `plugin`
+resource is intentionally separate future scope for plugin manifests, bundling,
+and distribution concerns.
 
 The legacy top-level `validate`, `translate`, and `diff` commands, plus
 `validate-agents`, `translate-agents`, `diff-agents`, and the `agent` resource,
@@ -159,6 +160,49 @@ generated/
   claude/mcp/openai-docs.json
   codex/mcp/openai-docs.toml
   copilot/mcp/openai-docs.json
+```
+
+## Skill Workflow
+
+Skill definitions describe portable `SKILL.md` content and optional
+target-specific metadata.
+
+Validate skill definitions:
+
+```bash
+uvx agent-def-translator skill validate --definitions-dir skills
+```
+
+Generate skill directories:
+
+```bash
+uvx agent-def-translator skill translate \
+  --definitions-dir skills \
+  --output-dir generated
+```
+
+Check generated skill directories in CI:
+
+```bash
+uvx agent-def-translator skill diff \
+  --definitions-dir skills \
+  --output-dir generated
+```
+
+For a definition named `hello`, this writes:
+
+```text
+generated/
+  claude/skills/hello/SKILL.md
+  codex/skills/hello/SKILL.md
+  copilot/skills/hello/SKILL.md
+```
+
+If Codex-specific UI, policy, or dependency metadata is present, the Codex
+target also writes:
+
+```text
+generated/codex/skills/hello/agents/openai.yaml
 ```
 
 ## Target Names

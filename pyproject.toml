@@ -105,12 +105,21 @@ max-complexity = 10
 [tool.uv]
 exclude-newer = "2 days"
 
+[tool.pytest.ini_options]
+markers = [
+  "e2e: end-to-end tests that invoke repository scripts",
+  "live: live tests that inspect installed external CLIs",
+  "model_live: live tests that call external model APIs",
+]
+
 [tool.poe.tasks]
 test = "pytest"
 coverage-xml = "pytest --cov=agent_def_translator --doctest-modules --cov-report=xml"
 format = "ruff format src/agent_def_translator tests"
-e2e = "bash scripts/e2e-smoke.sh"
-e2e-live = "bash scripts/e2e-smoke.sh --live"
+e2e = "pytest -m 'e2e and not live' --run-e2e"
+e2e-live = "pytest -m 'live and not model_live' --run-e2e --run-live"
+e2e-model-live = "pytest -m model_live --run-e2e --run-live --run-model-live"
+test-full = "pytest --run-e2e --run-live --run-model-live"
 check = [
   { cmd = "ruff check src/agent_def_translator tests" },
   { cmd = "mypy src/agent_def_translator tests" },
