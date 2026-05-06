@@ -326,6 +326,7 @@ def write_skill_sample(root: Path) -> Path:
         "#!/usr/bin/env sh\necho hello\n",
         encoding="utf-8",
     )
+    (bundle_dir / "scripts" / "hello.sh").chmod(0o755)
     (bundle_dir / "references" / "usage.md").write_text(
         "# Usage\n",
         encoding="utf-8",
@@ -621,6 +622,11 @@ def write_plugin_sample(root: Path) -> Path:
         "# Runtime\n",
         encoding="utf-8",
     )
+    (definitions_dir / "runtime" / "run.sh").write_text(
+        "#!/usr/bin/env sh\necho runtime\n",
+        encoding="utf-8",
+    )
+    (definitions_dir / "runtime" / "run.sh").chmod(0o755)
     spec = definitions_dir / "hello-bundle.toml"
     spec.write_text(
         textwrap.dedent(
@@ -699,7 +705,7 @@ def test_generate_plugins_and_drift_check(tmp_path: Path) -> None:
         output_dir=output_dir,
     )
 
-    assert len(artifacts) == 32
+    assert len(artifacts) == 35
     claude_root = output_dir / "claude" / "plugins" / "hello-bundle"
     codex_root = output_dir / "codex" / "plugins" / "hello-bundle"
     copilot_root = output_dir / "copilot" / "plugins" / "hello-bundle"
@@ -717,6 +723,13 @@ def test_generate_plugins_and_drift_check(tmp_path: Path) -> None:
     assert (codex_root / "README.md").read_text(
         encoding="utf-8",
     ) == "# Runtime\n"
+    assert ((codex_root / "run.sh").stat().st_mode & 0o777) == 0o755
+    assert (
+        (claude_root / "skills" / "hello" / "scripts" / "hello.sh")
+        .stat()
+        .st_mode
+        & 0o777
+    ) == 0o755
     marketplace = json.loads(
         (output_dir / "codex" / "marketplace.json").read_text(
             encoding="utf-8",
@@ -741,6 +754,58 @@ def test_generate_plugins_and_drift_check(tmp_path: Path) -> None:
         definitions_dir=tmp_path / "plugins",
         output_dir=output_dir,
     ) == [generated]
+
+    script = codex_root / "run.sh"
+    script.chmod(0o644)
+
+    assert check_plugin_drift(
+        definitions_dir=tmp_path / "plugins",
+        output_dir=output_dir,
+    ) == [generated, script]
+
+
+def test_generate_plugins_can_skip_missing_optional_components(
+    tmp_path: Path,
+) -> None:
+    definitions_dir = tmp_path / "plugins"
+    definitions_dir.mkdir()
+    spec = definitions_dir / "optional-bundle.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "optional-bundle"
+            description = "Bundle optional components when present."
+            version = "0.1.0"
+
+            [components]
+            subagents = true
+            skills = true
+            mcp = true
+            resources_dir = "missing-runtime"
+            require_subagents = false
+            require_skills = false
+            require_mcp = false
+            require_resources = false
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    artifacts = generate_plugins(
+        definitions_dir=definitions_dir,
+        output_dir=tmp_path / "generated",
+    )
+
+    assert [
+        artifact.output_path.relative_to(tmp_path / "generated").as_posix()
+        for artifact in artifacts
+    ] == [
+        "claude/plugins/optional-bundle/.claude-plugin/plugin.json",
+        "codex/plugins/optional-bundle/.codex-plugin/plugin.json",
+        "codex/marketplace.json",
+        "copilot/plugins/optional-bundle/plugin.json",
+    ]
 
 
 def test_validate_plugin_definitions(tmp_path: Path) -> None:

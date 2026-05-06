@@ -142,6 +142,8 @@ For example, `skills/hello/scripts/run.sh` is copied to
 `generated/claude/skills/hello/scripts/run.sh`,
 `generated/codex/skills/hello/scripts/run.sh`, and
 `generated/copilot/skills/hello/scripts/run.sh`.
+Copied resource files preserve their source permission bits, including
+executable bits for helper scripts.
 
 This follows the Agent Skills model: `SKILL.md` is the required entrypoint,
 while additional files such as scripts, references, templates, examples,
