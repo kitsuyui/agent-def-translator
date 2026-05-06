@@ -93,15 +93,22 @@ definition format by themselves.
 - [Agent Skills specification](https://agentskills.io/specification)
 
 Skills describe reusable task instructions and bundled context. They are related
-to agents because an agent may load, invoke, or be distributed with skills, but
-this package currently translates agent definitions only.
+to agents because an agent may load, invoke, or be distributed with skills.
+`agent-def-translator` translates skill definitions into target-specific
+`SKILL.md` directories and Codex `agents/openai.yaml` metadata when needed.
+Bundled skill resources are broader than only `scripts/`, `references/`, and
+`assets/`: the Agent Skills specification permits additional files and
+directories, and vendor docs mention examples such as templates, top-level
+reference files, and helper scripts. Treat these as opaque resource files that
+are copied with the generated skill directory; the generated `SKILL.md` should
+reference them with relative paths so each target agent loads them on demand.
 
 Treat vendor documentation as the source for target behavior. Treat the Agent
 Skills site and specification as ecosystem context for common skill concepts,
 not as a source for target-specific rendered output.
 
-Do not add skill packaging, skill invocation, or skill marketplace behavior to
-the core renderer unless the package scope is intentionally expanded.
+Do not add skill marketplace behavior or plugin packaging to the core renderer
+unless the package scope is intentionally expanded.
 
 ### Plugins
 
