@@ -30,11 +30,14 @@ uvx agent-def-translator skill validate --definitions-dir skills
 uvx agent-def-translator skill translate --definitions-dir skills --output-dir generated
 uvx agent-def-translator mcp validate --definitions-dir mcp
 uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir generated
+uvx agent-def-translator plugin validate --definitions-dir plugins
+uvx agent-def-translator plugin translate --definitions-dir plugins --output-dir generated
 ```
 
-Subagent, skill, and MCP config translation are implemented today. The `plugin`
-resource is intentionally separate future scope for plugin manifests, bundling,
-and distribution concerns.
+Subagent, skill, MCP config, and plugin bundle translation are implemented
+today. Plugin translation is a packaging/linking step over generated artifacts;
+run it after the resource translators that produce the components you want to
+bundle.
 
 The legacy top-level `validate`, `translate`, and `diff` commands, plus
 `validate-agents`, `translate-agents`, `diff-agents`, and the `agent` resource,
@@ -204,6 +207,49 @@ target also writes:
 ```text
 generated/codex/skills/hello/agents/openai.yaml
 ```
+
+## Plugin Workflow
+
+Plugin definitions describe how generated subagents, skills, and MCP config
+fragments are bundled into target-specific plugin directories. They should run
+after the component translators:
+
+```bash
+uvx agent-def-translator subagent translate --definitions-dir agents --output-dir generated
+uvx agent-def-translator skill translate --definitions-dir skills --output-dir generated
+uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir generated
+uvx agent-def-translator plugin translate --definitions-dir plugins --output-dir generated
+```
+
+Validate plugin definitions:
+
+```bash
+uvx agent-def-translator plugin validate --definitions-dir plugins
+```
+
+Check generated plugin bundles in CI:
+
+```bash
+uvx agent-def-translator plugin diff \
+  --definitions-dir plugins \
+  --output-dir generated
+```
+
+For a definition named `hello-bundle`, this writes:
+
+```text
+generated/
+  claude/plugins/hello-bundle/.claude-plugin/plugin.json
+  claude/plugins/hello-bundle/.mcp.json
+  codex/plugins/hello-bundle/.codex-plugin/plugin.json
+  codex/plugins/hello-bundle/.mcp.json
+  codex/marketplace.json
+  copilot/plugins/hello-bundle/plugin.json
+  copilot/plugins/hello-bundle/.mcp.json
+```
+
+The plugin bundle also contains copied `agents/` and `skills/` directories when
+those components are enabled.
 
 ## Target Names
 

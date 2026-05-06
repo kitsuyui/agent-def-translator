@@ -98,4 +98,4 @@ or project-specific skill sets. Skill examples are limited to tiny fixtures,
 such as `examples/skills/hello/SKILL.md` and
 `examples/skill-definitions/hello.toml`, so the package stays focused on
 definition translation rather than distributing an opinionated skill library.
-MCP examples follow the same rule and use generic public config fixtures.
+MCP and plugin examples follow the same rule and use generic public fixtures.

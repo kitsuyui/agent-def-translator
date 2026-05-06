@@ -2,14 +2,14 @@
 
 ![Coverage](https://raw.githubusercontent.com/kitsuyui/octocov-central/main/badges/kitsuyui/agent-def-translator/coverage.svg)
 
-`agent-def-translator` translates one canonical subagent definition into
-platform-native subagent files for Claude Code, OpenAI Codex, and GitHub
-Copilot.
+`agent-def-translator` translates canonical agent resource definitions into
+platform-native files for Claude Code, OpenAI Codex, and GitHub Copilot.
 
 Use it when you want to keep subagent roles, descriptions, and instructions in
 one reviewable TOML file, then generate the files each coding-agent product
-expects. It is a translator only: it does not run agents, manage sessions,
-resume tasks, or provide an orchestration runtime.
+expects. It can also translate skill definitions, MCP config definitions, and
+plugin bundle definitions. It is a translator only: it does not run agents,
+manage sessions, resume tasks, or provide an orchestration runtime.
 
 ```mermaid
 flowchart LR
@@ -94,6 +94,14 @@ uvx agent-def-translator subagent diff \
 `diff` exits with `0` when generated files are current, and `1` when any target
 file is missing or stale.
 
+Bundle generated resources into target-native plugin directories:
+
+```bash
+uvx agent-def-translator plugin translate \
+  --definitions-dir plugins \
+  --output-dir generated
+```
+
 Top-level commands such as `translate` and the older `agent` resource remain as
 deprecated aliases for compatibility. Prefer the resource-oriented command:
 
@@ -103,9 +111,8 @@ uvx agent-def-translator subagent translate \
   --output-dir generated
 ```
 
-The CLI is organized as resource + predicate commands. Subagent, skill, and MCP
-config translation are implemented today. Plugin translation is separate future
-scope for plugin manifests, bundling, and distribution concerns.
+The CLI is organized as resource + predicate commands. Subagent, skill, MCP
+config, and plugin bundle translation are implemented today.
 
 ```bash
 uvx agent-def-translator subagent translate --definitions-dir agents --output-dir generated
@@ -113,6 +120,8 @@ uvx agent-def-translator skill validate --definitions-dir skills
 uvx agent-def-translator skill translate --definitions-dir skills --output-dir generated
 uvx agent-def-translator mcp validate --definitions-dir mcp
 uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir generated
+uvx agent-def-translator plugin validate --definitions-dir plugins
+uvx agent-def-translator plugin translate --definitions-dir plugins --output-dir generated
 ```
 
 ## Documentation
@@ -124,6 +133,9 @@ uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir genera
   config fragments for Claude Code, Codex, and GitHub Copilot.
 - [Skill format](docs/skill-format.md): TOML fields and generated skill
   directories for Claude Code, Codex, and GitHub Copilot.
+- [Plugin bundle format](docs/plugin-format.md): TOML fields and generated
+  plugin bundle directories, manifests, MCP bundle files, and Codex marketplace
+  metadata.
 - [Platform references](docs/references.md): official documentation used to
   ground target-specific output formats, plus adjacent future-scope concepts
   such as MCP.
@@ -157,7 +169,9 @@ generated = generate(
   generated as target-specific projections.
 - MCP server implementation is out of scope, but MCP config definitions can be
   translated into target-specific config fragments.
-- Plugin packaging is out of scope for the current renderer.
+- Plugin definitions package generated subagents, skills, and MCP config
+  fragments into target-specific plugin bundles. They do not define new agent
+  behavior.
 - Concrete workflow skill examples are intentionally tiny, such as
   `examples/skills/hello/SKILL.md`.
 

@@ -74,8 +74,8 @@ Keep these concepts separate in the canonical model:
 
 Some target platforms bundle these concepts together for installation, but a
 translator should not collapse them into one table. This keeps agent rendering
-small today and leaves room for future skill, plugin, or MCP translation
-without breaking the agent definition contract.
+small and lets skill, plugin, and MCP translation evolve without breaking the
+agent definition contract.
 
 ## Adjacent Concepts
 
@@ -107,22 +107,31 @@ Treat vendor documentation as the source for target behavior. Treat the Agent
 Skills site and specification as ecosystem context for common skill concepts,
 not as a source for target-specific rendered output.
 
-Do not add skill marketplace behavior or plugin packaging to the core renderer
-unless the package scope is intentionally expanded.
+Keep skill rendering separate from plugin packaging. Skill translation owns
+`SKILL.md` and resource files; plugin translation owns distribution manifests
+and bundle layout.
 
 ### Plugins
 
 - [Claude Code plugins](https://code.claude.com/docs/en/plugins)
+- [Claude Code plugins reference](https://code.claude.com/docs/en/plugins-reference)
+- [Codex plugins](https://developers.openai.com/codex/plugins)
 - [Codex build plugins](https://developers.openai.com/codex/plugins/build)
+- [GitHub Copilot CLI plugins](https://docs.github.com/en/copilot/concepts/agents/copilot-cli/about-cli-plugins)
+- [GitHub Copilot CLI plugin reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference)
 
 Plugins are distribution containers for capabilities such as agents, skills, and
-commands. `agent-def-translator` may be used inside a plugin build pipeline, but
-plugin packaging is outside the current translation contract.
+commands. `agent-def-translator plugin translate` models this as a
+packaging/linking step: generated subagents, skills, and MCP config fragments are
+copied or merged into target-specific plugin directories, and platform manifests
+are generated from one canonical plugin definition.
 
 Claude Code and Codex expose plugins as explicit distribution units. GitHub
-Copilot is better modeled here as custom agents plus skills plus MCP
-configuration rather than as a plugin target. Keep plugin adapters separate from
-agent adapters if this package grows beyond agent definition translation.
+Copilot has CLI plugin concepts, but its coding-agent customization surfaces are
+still better modeled here as custom agents plus skills plus MCP configuration.
+For that reason the Copilot plugin output is a bundle directory with a manifest
+and copied generated artifacts rather than an attempt to invent a new Copilot
+agent runtime.
 
 ## MCP Configs
 

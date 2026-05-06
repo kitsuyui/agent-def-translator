@@ -272,3 +272,84 @@ def test_cli_mcp_validate_translate_and_diff(tmp_path: Path) -> None:
     generated.write_text("stale", encoding="utf-8")
 
     assert main(diff_args) == 1
+
+
+def test_cli_plugin_validate_translate_and_diff(tmp_path: Path) -> None:
+    generated = tmp_path / "generated"
+    (generated / "claude" / "agents").mkdir(parents=True)
+    (generated / "claude" / "agents" / "hello.md").write_text(
+        "hello agent\n",
+        encoding="utf-8",
+    )
+    (generated / "claude" / "skills" / "hello").mkdir(parents=True)
+    (generated / "claude" / "skills" / "hello" / "SKILL.md").write_text(
+        "hello skill\n",
+        encoding="utf-8",
+    )
+    (generated / "claude" / "mcp").mkdir(parents=True)
+    (generated / "claude" / "mcp" / "hello.json").write_text(
+        '{"mcpServers": {"hello": {"type": "http", "url": "https://example.com"}}}\n',
+        encoding="utf-8",
+    )
+
+    definitions_dir = tmp_path / "plugins"
+    definitions_dir.mkdir()
+    (definitions_dir / "hello-bundle.toml").write_text(
+        "\n".join(
+            [
+                'name = "hello-bundle"',
+                'description = "Bundle hello components."',
+                'version = "0.1.0"',
+                'author = "Example Maintainer"',
+                "",
+                "[components]",
+                "subagents = true",
+                "skills = true",
+                "mcp = true",
+                "",
+                "[targets.codex]",
+                "enabled = false",
+                "",
+                "[targets.copilot]",
+                "enabled = false",
+            ],
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert (
+        main(["plugin", "validate", "--definitions-dir", str(definitions_dir)])
+        == 0
+    )
+    translate_args = [
+        "plugin",
+        "translate",
+        "--definitions-dir",
+        str(definitions_dir),
+        "--output-dir",
+        str(generated),
+    ]
+    diff_args = [
+        "plugin",
+        "diff",
+        "--definitions-dir",
+        str(definitions_dir),
+        "--output-dir",
+        str(generated),
+    ]
+    assert main(translate_args) == 0
+    assert main(diff_args) == 0
+
+    manifest = (
+        generated
+        / "claude"
+        / "plugins"
+        / "hello-bundle"
+        / ".claude-plugin"
+        / "plugin.json"
+    )
+    assert manifest.exists()
+    manifest.write_text("stale", encoding="utf-8")
+
+    assert main(diff_args) == 1
