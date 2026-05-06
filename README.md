@@ -1,5 +1,7 @@
 # agent-def-translator
 
+![Coverage](https://raw.githubusercontent.com/kitsuyui/octocov-central/main/badges/kitsuyui/agent-def-translator/coverage.svg)
+
 `agent-def-translator` translates one canonical coding-agent definition into
 platform-native agent files for Claude Code, OpenAI Codex, and GitHub Copilot.
 
