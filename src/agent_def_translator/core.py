@@ -146,7 +146,16 @@ PLUGIN_ROOT_FIELDS = frozenset(
     },
 )
 PLUGIN_COMPONENT_FIELDS = frozenset(
-    {"subagents", "skills", "mcp", "resources_dir"},
+    {
+        "subagents",
+        "skills",
+        "mcp",
+        "resources_dir",
+        "require_subagents",
+        "require_skills",
+        "require_mcp",
+        "require_resources",
+    },
 )
 PLUGIN_INTERFACE_FIELDS = frozenset(
     {
@@ -238,6 +247,7 @@ class GeneratedArtifact:
     source_path: Path
     output_path: Path
     content: str | bytes
+    mode: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1209,6 +1219,7 @@ def _skill_bundle_artifacts(
                 source_path=path,
                 output_path=skill_dir / relative_path,
                 content=path.read_bytes(),
+                mode=path.stat().st_mode & 0o777,
             ),
         )
     return artifacts
@@ -1686,7 +1697,15 @@ def _validate_plugin_components(path: Path, value: Any) -> None:
         raise DefinitionError(
             f"{path}: [components] unknown fields: {fields}",
         )
-    for key in ("subagents", "skills", "mcp"):
+    for key in (
+        "subagents",
+        "skills",
+        "mcp",
+        "require_subagents",
+        "require_skills",
+        "require_mcp",
+        "require_resources",
+    ):
         component_value = value.get(key)
         if component_value is not None and not isinstance(
             component_value,
@@ -1871,6 +1890,10 @@ def _plugin_bundle_artifacts(
                 target=target,
                 source_root=output_dir / target.value / "agents",
                 output_root=plugin_root / "agents",
+                required=_plugin_component_required(
+                    components,
+                    "subagents",
+                ),
             ),
         )
     if components.get("skills") is True:
@@ -1879,10 +1902,18 @@ def _plugin_bundle_artifacts(
                 target=target,
                 source_root=output_dir / target.value / "skills",
                 output_root=plugin_root / "skills",
+                required=_plugin_component_required(components, "skills"),
             ),
         )
     if components.get("mcp") is True:
-        artifacts.append(_plugin_mcp_artifact(definition, output_dir, target))
+        artifact = _plugin_mcp_artifact(
+            definition,
+            output_dir,
+            target,
+            required=_plugin_component_required(components, "mcp"),
+        )
+        if artifact is not None:
+            artifacts.append(artifact)
 
     resources_dir = components.get("resources_dir")
     if isinstance(resources_dir, str) and resources_dir.strip():
@@ -1892,9 +1923,18 @@ def _plugin_bundle_artifacts(
                 target=target,
                 source_root=source_root,
                 output_root=plugin_root,
+                required=_plugin_component_required(components, "resources"),
             ),
         )
     return artifacts
+
+
+def _plugin_component_required(
+    components: dict[str, Any],
+    name: str,
+) -> bool:
+    value = components.get(f"require_{name}", True)
+    return bool(value)
 
 
 def _copy_tree_artifacts(
@@ -1902,8 +1942,11 @@ def _copy_tree_artifacts(
     target: Target,
     source_root: Path,
     output_root: Path,
+    required: bool = True,
 ) -> list[GeneratedArtifact]:
     if not source_root.is_dir():
+        if not required:
+            return []
         msg = f"component directory not found: {source_root}"
         raise DefinitionError(msg)
     artifacts: list[GeneratedArtifact] = []
@@ -1916,6 +1959,7 @@ def _copy_tree_artifacts(
                 source_path=path,
                 output_path=output_root / path.relative_to(source_root),
                 content=path.read_bytes(),
+                mode=path.stat().st_mode & 0o777,
             ),
         )
     return artifacts
@@ -1925,9 +1969,13 @@ def _plugin_mcp_artifact(
     definition: PluginDefinition,
     output_dir: Path,
     target: Target,
-) -> GeneratedArtifact:
+    *,
+    required: bool = True,
+) -> GeneratedArtifact | None:
     source_root = output_dir / target.value / "mcp"
     if not source_root.is_dir():
+        if not required:
+            return None
         msg = f"component directory not found: {source_root}"
         raise DefinitionError(msg)
     if target == Target.CODEX:
@@ -1935,6 +1983,8 @@ def _plugin_mcp_artifact(
     else:
         payload = _merge_json_mcp_fragments(source_root)
     if not payload.get("mcpServers"):
+        if not required:
+            return None
         msg = f"no MCP servers found in: {source_root}"
         raise DefinitionError(msg)
     payload = {
@@ -2108,12 +2158,32 @@ def _artifact_has_drift(artifact: GeneratedArtifact) -> bool:
     if not artifact.output_path.exists():
         return True
     if isinstance(artifact.content, bytes):
-        return artifact.output_path.read_bytes() != artifact.content
-    return artifact.output_path.read_text(encoding="utf-8") != artifact.content
+        content_drifted = artifact.output_path.read_bytes() != artifact.content
+    else:
+        content_drifted = (
+            artifact.output_path.read_text(encoding="utf-8")
+            != artifact.content
+        )
+    if content_drifted:
+        return True
+    return _artifact_mode_has_drift(artifact)
 
 
 def _write_artifact(artifact: GeneratedArtifact) -> None:
     if isinstance(artifact.content, bytes):
         artifact.output_path.write_bytes(artifact.content)
+        _chmod_artifact(artifact)
         return
     artifact.output_path.write_text(artifact.content, encoding="utf-8")
+    _chmod_artifact(artifact)
+
+
+def _artifact_mode_has_drift(artifact: GeneratedArtifact) -> bool:
+    if artifact.mode is None:
+        return False
+    return (artifact.output_path.stat().st_mode & 0o777) != artifact.mode
+
+
+def _chmod_artifact(artifact: GeneratedArtifact) -> None:
+    if artifact.mode is not None:
+        artifact.output_path.chmod(artifact.mode)

@@ -97,6 +97,10 @@ subagents = true
 skills = true
 mcp = true
 resources_dir = "runtime"
+require_subagents = true
+require_skills = true
+require_mcp = true
+require_resources = true
 ```
 
 - `subagents`: copies `generated/<target>/agents/` into the plugin bundle.
@@ -104,8 +108,16 @@ resources_dir = "runtime"
 - `mcp`: merges generated MCP fragments into the plugin bundle's `.mcp.json`.
 - `resources_dir`: optional directory relative to the plugin definition
   directory. Its files are copied into the plugin root for every selected target.
+- `require_subagents`, `require_skills`, `require_mcp`, and
+  `require_resources`: make the corresponding enabled component mandatory.
+  They default to `true`. Set one to `false` when a component should be bundled
+  only if its source directory exists.
 
 If `[components]` is omitted, `subagents`, `skills`, and `mcp` default to `true`.
+
+Copied files preserve their source permission bits, including executable bits.
+`plugin diff` also reports drift when a generated copied file has the right
+content but the wrong mode.
 
 ## Interface
 
