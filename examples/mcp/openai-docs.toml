@@ -1,0 +1,14 @@
+name = "openai-docs"
+description = "OpenAI developer documentation MCP server."
+transport = "http"
+url = "https://developers.openai.com/mcp"
+
+[targets.codex]
+server_name = "openaiDeveloperDocs"
+
+[targets.claude]
+server_name = "openaiDeveloperDocs"
+
+[targets.copilot]
+server_name = "openaiDeveloperDocs"
+tools = ["*"]

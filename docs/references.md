@@ -117,16 +117,15 @@ Copilot is better modeled here as custom agents plus skills plus MCP
 configuration rather than as a plugin target. Keep plugin adapters separate from
 agent adapters if this package grows beyond agent definition translation.
 
-## Future Scope: MCP
+## MCP Configs
 
-Model Context Protocol (MCP) is not currently managed by
-`agent-def-translator`. MCP concepts should remain out of the generated agent
-files unless a future feature explicitly models tool servers, server scopes, or
-target-specific MCP wiring.
+`agent-def-translator` translates MCP config definitions into target-specific
+config fragments. It does not implement MCP servers, start MCP servers, or own
+user authentication.
 
 Keep MCP references here because target agent definitions often mention tools,
-and future versions may need to translate a canonical tool-server definition
-alongside agent definitions.
+and MCP config translation is intentionally adjacent to agent definition
+translation.
 
 - [Claude Code MCP](https://code.claude.com/docs/en/mcp)
 - [Codex MCP](https://developers.openai.com/codex/mcp)
@@ -135,10 +134,10 @@ alongside agent definitions.
 - [GitHub Copilot: Extend cloud agent with MCP](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/extend-cloud-agent-with-mcp)
 - [GitHub Copilot: MCP concept](https://docs.github.com/en/copilot/concepts/context/mcp)
 
-When MCP support is added, prefer a separate canonical model from agent roles.
-For example, agent definitions may reference logical tools or capability names,
-while MCP server definitions should own server URLs, transport details,
-authentication, allowed tools, and approval policy.
+MCP config definitions use a separate canonical model from agent roles. For
+example, agent definitions may reference logical tools or capability names,
+while MCP config definitions own server URLs, transport details, authentication
+environment variable names, allowed tools, and target-specific wiring.
 
 Do not treat MCP as another agent target. MCP is a tool and data-source
 connection layer that an agent may use.

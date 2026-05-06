@@ -21,6 +21,25 @@ uv run agent-def-translator --help
 
 ## Commands
 
+Commands are also available in resource-oriented form:
+
+```bash
+uvx agent-def-translator subagent validate --definitions-dir agents
+uvx agent-def-translator subagent translate --definitions-dir agents --output-dir generated
+uvx agent-def-translator skill translate --definitions-dir skills --output-dir generated
+uvx agent-def-translator mcp validate --definitions-dir mcp
+uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir generated
+```
+
+Subagent and MCP config translation are implemented today. The `skill`
+namespace is reserved for future skill definition translation and currently
+returns an explicit "not implemented yet" error.
+
+The legacy top-level `validate`, `translate`, and `diff` commands, plus
+`validate-agents`, `translate-agents`, `diff-agents`, and the `agent` resource,
+remain deprecated aliases for the corresponding `subagent` commands. They still
+run, but print a warning to stderr.
+
 ### validate
 
 Validate definition files and render the selected target projections in memory.
@@ -28,19 +47,19 @@ This catches TOML shape errors, unknown fields, missing prompt append files, and
 unsupported target-specific metadata types before writing generated files.
 
 ```bash
-uvx agent-def-translator validate --definitions-dir agents
+uvx agent-def-translator subagent validate --definitions-dir agents
 ```
 
 Validate only one target:
 
 ```bash
-uvx agent-def-translator validate --definitions-dir agents --target codex
+uvx agent-def-translator subagent validate --definitions-dir agents --target codex
 ```
 
 Repeat `--target` to validate multiple targets:
 
 ```bash
-uvx agent-def-translator validate \
+uvx agent-def-translator subagent validate \
   --definitions-dir agents \
   --target claude \
   --target copilot
@@ -51,10 +70,10 @@ On success, the command prints each validated definition path and exits with
 
 ### translate
 
-Generate platform-native agent files.
+Generate platform-native subagent files.
 
 ```bash
-uvx agent-def-translator translate \
+uvx agent-def-translator subagent translate \
   --definitions-dir agents \
   --output-dir generated
 ```
@@ -62,7 +81,7 @@ uvx agent-def-translator translate \
 Generate only one target:
 
 ```bash
-uvx agent-def-translator translate \
+uvx agent-def-translator subagent translate \
   --definitions-dir agents \
   --output-dir generated \
   --target codex
@@ -75,7 +94,7 @@ On success, the command prints each written artifact path and exits with `0`.
 Check whether generated files are current without rewriting them.
 
 ```bash
-uvx agent-def-translator diff \
+uvx agent-def-translator subagent diff \
   --definitions-dir agents \
   --output-dir generated
 ```
@@ -92,17 +111,54 @@ the preferred CI check after generated files have been committed.
 ## Typical Repository Workflow
 
 1. Edit `agents/*.toml` and any referenced prompt files.
-2. Run `validate`.
-3. Run `translate`.
+2. Run `subagent validate`.
+3. Run `subagent translate`.
 4. Review and commit both the canonical definition changes and generated files.
-5. Run `diff` in CI to keep generated files synchronized.
+5. Run `subagent diff` in CI to keep generated files synchronized.
 
 Example:
 
 ```bash
-uvx agent-def-translator validate --definitions-dir agents
-uvx agent-def-translator translate --definitions-dir agents --output-dir generated
-uvx agent-def-translator diff --definitions-dir agents --output-dir generated
+uvx agent-def-translator subagent validate --definitions-dir agents
+uvx agent-def-translator subagent translate --definitions-dir agents --output-dir generated
+uvx agent-def-translator subagent diff --definitions-dir agents --output-dir generated
+```
+
+## MCP Config Workflow
+
+MCP config definitions are separate from subagent role definitions. They describe
+connection configuration for MCP servers, then render target-native config
+fragments.
+
+Validate MCP config definitions:
+
+```bash
+uvx agent-def-translator mcp validate --definitions-dir mcp
+```
+
+Generate MCP config fragments:
+
+```bash
+uvx agent-def-translator mcp translate \
+  --definitions-dir mcp \
+  --output-dir generated
+```
+
+Check generated MCP config fragments in CI:
+
+```bash
+uvx agent-def-translator mcp diff \
+  --definitions-dir mcp \
+  --output-dir generated
+```
+
+For a definition named `openai-docs`, this writes:
+
+```text
+generated/
+  claude/mcp/openai-docs.json
+  codex/mcp/openai-docs.toml
+  copilot/mcp/openai-docs.json
 ```
 
 ## Target Names

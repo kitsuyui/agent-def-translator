@@ -8,8 +8,11 @@ from agent_def_translator.core import (
     DefinitionError,
     Target,
     check_drift,
+    check_mcp_config_drift,
     generate,
+    generate_mcp_configs,
     validate_definitions,
+    validate_mcp_config_definitions,
 )
 
 
@@ -17,42 +20,144 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="agent-def-translator")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    subagent = subparsers.add_parser(
+        "subagent",
+        help="Work with subagent definition files.",
+    )
+    subagent_subparsers = subagent.add_subparsers(
+        dest="resource_command",
+        required=True,
+    )
+    subagent_validate = subagent_subparsers.add_parser(
+        "validate",
+        help="Validate subagent definition TOML files.",
+    )
+    _add_definition_args(subagent_validate, output=False)
+    subagent_translate = subagent_subparsers.add_parser(
+        "translate",
+        help="Generate platform-native subagent files.",
+    )
+    _add_definition_args(subagent_translate, output=True)
+    subagent_diff = subagent_subparsers.add_parser(
+        "diff",
+        help="Check whether generated subagent files are up to date.",
+    )
+    _add_definition_args(subagent_diff, output=True)
+
+    agent = subparsers.add_parser(
+        "agent",
+        help="Deprecated alias for subagent.",
+    )
+    agent_subparsers = agent.add_subparsers(
+        dest="resource_command",
+        required=True,
+    )
+    agent_validate = agent_subparsers.add_parser(
+        "validate",
+        help="Deprecated alias for subagent validate.",
+    )
+    _add_definition_args(agent_validate, output=False)
+    agent_translate = agent_subparsers.add_parser(
+        "translate",
+        help="Deprecated alias for subagent translate.",
+    )
+    _add_definition_args(agent_translate, output=True)
+    agent_diff = agent_subparsers.add_parser(
+        "diff",
+        help="Deprecated alias for subagent diff.",
+    )
+    _add_definition_args(agent_diff, output=True)
+
+    skill = subparsers.add_parser(
+        "skill",
+        help="Work with skill definition files.",
+    )
+    skill_subparsers = skill.add_subparsers(
+        dest="resource_command",
+        required=True,
+    )
+    skill_translate = skill_subparsers.add_parser(
+        "translate",
+        help="Translate skill definitions. Reserved for future support.",
+    )
+    _add_definition_args(skill_translate, output=True)
+
+    mcp = subparsers.add_parser(
+        "mcp",
+        help="Work with MCP config definition files.",
+    )
+    mcp_subparsers = mcp.add_subparsers(
+        dest="resource_command",
+        required=True,
+    )
+    mcp_validate = mcp_subparsers.add_parser(
+        "validate",
+        help="Validate MCP config definition TOML files.",
+    )
+    _add_definition_args(mcp_validate, output=False)
+    mcp_translate = mcp_subparsers.add_parser(
+        "translate",
+        help="Generate platform-native MCP config files.",
+    )
+    _add_definition_args(mcp_translate, output=True)
+    mcp_diff = mcp_subparsers.add_parser(
+        "diff",
+        help="Check whether generated MCP config files are up to date.",
+    )
+    _add_definition_args(mcp_diff, output=True)
+
     validate = subparsers.add_parser(
         "validate",
-        help="Validate agent definition TOML files.",
+        help="Deprecated alias for subagent validate.",
     )
-    validate.add_argument("--definitions-dir", required=True)
-    validate.add_argument(
-        "--target",
-        action="append",
-        choices=[target.value for target in Target],
+    _add_definition_args(validate, output=False)
+
+    validate_agents = subparsers.add_parser(
+        "validate-agents",
+        help="Deprecated alias for subagent validate.",
     )
+    _add_definition_args(validate_agents, output=False)
 
     translate = subparsers.add_parser(
         "translate",
-        help="Generate platform-native agent files.",
+        help="Deprecated alias for subagent translate.",
     )
-    translate.add_argument("--definitions-dir", required=True)
-    translate.add_argument("--output-dir", required=True)
-    translate.add_argument(
-        "--target",
-        action="append",
-        choices=[target.value for target in Target],
+    _add_definition_args(translate, output=True)
+
+    translate_agents = subparsers.add_parser(
+        "translate-agents",
+        help="Deprecated alias for subagent translate.",
     )
+    _add_definition_args(translate_agents, output=True)
 
     diff = subparsers.add_parser(
         "diff",
-        help="Check whether generated files are up to date.",
+        help="Deprecated alias for subagent diff.",
     )
-    diff.add_argument("--definitions-dir", required=True)
-    diff.add_argument("--output-dir", required=True)
-    diff.add_argument(
+    _add_definition_args(diff, output=True)
+
+    diff_agents = subparsers.add_parser(
+        "diff-agents",
+        help="Deprecated alias for subagent diff.",
+    )
+    _add_definition_args(diff_agents, output=True)
+
+    return parser.parse_args(argv)
+
+
+def _add_definition_args(
+    parser: argparse.ArgumentParser,
+    *,
+    output: bool,
+) -> None:
+    parser.add_argument("--definitions-dir", required=True)
+    if output:
+        parser.add_argument("--output-dir", required=True)
+    parser.add_argument(
         "--target",
         action="append",
         choices=[target.value for target in Target],
     )
-
-    return parser.parse_args(argv)
 
 
 def _targets(values: list[str] | None) -> tuple[Target, ...]:
@@ -64,39 +169,146 @@ def _targets(values: list[str] | None) -> tuple[Target, ...]:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        if args.command == "validate":
-            definitions = validate_definitions(
-                Path(args.definitions_dir),
-                targets=_targets(args.target),
-            )
-            for definition in definitions:
-                print(definition.source_path.as_posix())
-            return 0
-
-        if args.command == "translate":
-            artifacts = generate(
-                definitions_dir=Path(args.definitions_dir),
-                output_dir=Path(args.output_dir),
-                targets=_targets(args.target),
-            )
-            for artifact in artifacts:
-                print(artifact.output_path.as_posix())
-            return 0
-
-        if args.command == "diff":
-            drifted = check_drift(
-                definitions_dir=Path(args.definitions_dir),
-                output_dir=Path(args.output_dir),
-                targets=_targets(args.target),
-            )
-            for path in drifted:
-                print(path.as_posix())
-            return 1 if drifted else 0
+        command = _normalized_command(args)
+        _warn_deprecated_command(args, command)
+        return _run_command(args, command)
     except DefinitionError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+
+def _normalized_command(args: argparse.Namespace) -> tuple[str, str]:
+    aliases = {
+        "validate": ("subagent", "validate"),
+        "validate-agents": ("subagent", "validate"),
+        "translate": ("subagent", "translate"),
+        "translate-agents": ("subagent", "translate"),
+        "diff": ("subagent", "diff"),
+        "diff-agents": ("subagent", "diff"),
+    }
+    if args.command in aliases:
+        return aliases[args.command]
+    if args.command == "agent":
+        return ("subagent", args.resource_command)
+    if args.command in {"subagent", "skill", "mcp"}:
+        return (args.command, args.resource_command)
     raise AssertionError(f"unhandled command: {args.command}")
+
+
+def _warn_deprecated_command(
+    args: argparse.Namespace,
+    command: tuple[str, str],
+) -> None:
+    replacements = {
+        "validate": "subagent validate",
+        "validate-agents": "subagent validate",
+        "translate": "subagent translate",
+        "translate-agents": "subagent translate",
+        "diff": "subagent diff",
+        "diff-agents": "subagent diff",
+    }
+    replacement = replacements.get(args.command)
+    if args.command == "agent":
+        replacement = f"subagent {command[1]}"
+    if replacement is None:
+        return
+    print(
+        "warning: this command is deprecated; "
+        f"use 'agent-def-translator {replacement}' instead.",
+        file=sys.stderr,
+    )
+
+
+def _run_command(
+    args: argparse.Namespace,
+    command: tuple[str, str],
+) -> int:
+    handlers = {
+        ("subagent", "validate"): _run_subagent_validate,
+        ("subagent", "translate"): _run_subagent_translate,
+        ("subagent", "diff"): _run_subagent_diff,
+        ("skill", "translate"): _run_skill_translate,
+        ("mcp", "validate"): _run_mcp_validate,
+        ("mcp", "translate"): _run_mcp_translate,
+        ("mcp", "diff"): _run_mcp_diff,
+    }
+    try:
+        handler = handlers[command]
+    except KeyError as exc:
+        raise AssertionError(f"unhandled command: {command}") from exc
+    return handler(args)
+
+
+def _run_subagent_validate(args: argparse.Namespace) -> int:
+    definitions = validate_definitions(
+        Path(args.definitions_dir),
+        targets=_targets(args.target),
+    )
+    for definition in definitions:
+        print(definition.source_path.as_posix())
+    return 0
+
+
+def _run_subagent_translate(args: argparse.Namespace) -> int:
+    artifacts = generate(
+        definitions_dir=Path(args.definitions_dir),
+        output_dir=Path(args.output_dir),
+        targets=_targets(args.target),
+    )
+    for artifact in artifacts:
+        print(artifact.output_path.as_posix())
+    return 0
+
+
+def _run_subagent_diff(args: argparse.Namespace) -> int:
+    drifted = check_drift(
+        definitions_dir=Path(args.definitions_dir),
+        output_dir=Path(args.output_dir),
+        targets=_targets(args.target),
+    )
+    for path in drifted:
+        print(path.as_posix())
+    return 1 if drifted else 0
+
+
+def _run_skill_translate(args: argparse.Namespace) -> int:
+    del args
+    raise DefinitionError(
+        "skill translation is not implemented yet; "
+        "the command namespace is reserved for future support",
+    )
+
+
+def _run_mcp_validate(args: argparse.Namespace) -> int:
+    definitions = validate_mcp_config_definitions(
+        Path(args.definitions_dir),
+        targets=_targets(args.target),
+    )
+    for definition in definitions:
+        print(definition.source_path.as_posix())
+    return 0
+
+
+def _run_mcp_translate(args: argparse.Namespace) -> int:
+    artifacts = generate_mcp_configs(
+        definitions_dir=Path(args.definitions_dir),
+        output_dir=Path(args.output_dir),
+        targets=_targets(args.target),
+    )
+    for artifact in artifacts:
+        print(artifact.output_path.as_posix())
+    return 0
+
+
+def _run_mcp_diff(args: argparse.Namespace) -> int:
+    drifted = check_mcp_config_drift(
+        definitions_dir=Path(args.definitions_dir),
+        output_dir=Path(args.output_dir),
+        targets=_targets(args.target),
+    )
+    for path in drifted:
+        print(path.as_posix())
+    return 1 if drifted else 0
 
 
 if __name__ == "__main__":
