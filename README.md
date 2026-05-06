@@ -1,7 +1,12 @@
 # agent-def-translator
 
-Maintain coding-agent role definitions once, then generate platform-native
-agent files for Claude Code, OpenAI Codex, and GitHub Copilot.
+`agent-def-translator` translates one canonical coding-agent definition into
+platform-native agent files for Claude Code, OpenAI Codex, and GitHub Copilot.
+
+Use it when you want to keep agent roles, descriptions, and instructions in one
+reviewable TOML file, then generate the files each coding-agent product expects.
+It is a translator only: it does not run agents, manage sessions, resume tasks,
+or provide an orchestration runtime.
 
 ## Status
 
@@ -9,32 +14,32 @@ This project is currently alpha software. The core translation model is usable,
 but the canonical definition shape and target-specific output formats may change
 before a stable release.
 
-This project intentionally does not run agents, manage sessions, resume tasks,
-or provide an orchestration runtime. It only translates definition files into
-deterministic platform artifacts.
+## Quick Start
 
-## Install
+Create a definition directory:
 
-```bash
-uv sync
+```text
+agents/
+  repo-explorer.toml
+prompts/
+  repo-explorer.claude.md
 ```
 
-## Agent Spec
-
-Write canonical role definitions as TOML:
+Write a canonical definition:
 
 ```toml
 name = "repo-explorer"
 description = "Read repository context and summarize relevant files."
 instructions = """
-Inspect the repository rules, locate the relevant files, and report concise
-findings with file paths. Do not edit files.
+Inspect repository rules, locate the relevant files, and report concise findings
+with file paths. Do not edit files.
 """
 
 [targets.claude]
 tools = ["Read", "Grep", "Glob"]
 permission_mode = "plan"
 model = "haiku"
+prompt_append_file = "../prompts/repo-explorer.claude.md"
 
 [targets.codex]
 model = "gpt-5.4-mini"
@@ -45,65 +50,44 @@ tools = ["search", "fetch"]
 target = "vscode"
 ```
 
-Target-specific prompt overrides are supported:
-
-```toml
-[targets.claude]
-prompt_append_file = "prompts/repo-explorer.claude.md"
-```
-
-## Skill Examples
-
-This repository does not vendor real workflow skills from any private or
-project-specific skill set. Skill examples are intentionally limited to tiny
-fixtures such as `examples/skills/hello/SKILL.md`, so the public package stays
-focused on definition translation rather than distributing an opinionated skill
-library.
-
-## CLI
-
-Validate definitions:
+Validate and generate artifacts:
 
 ```bash
-uv run agent-def-translator validate --definitions-dir examples/agents
+uvx agent-def-translator validate --definitions-dir agents
+uvx agent-def-translator translate --definitions-dir agents --output-dir generated
 ```
 
-Validate only one platform projection:
+This writes:
+
+```text
+generated/
+  claude/agents/repo-explorer.md
+  codex/agents/repo-explorer.toml
+  copilot/agents/repo-explorer.agent.md
+```
+
+Check generated files in CI without rewriting them:
 
 ```bash
-uv run agent-def-translator validate --definitions-dir examples/agents --target codex
+uvx agent-def-translator diff --definitions-dir agents --output-dir generated
 ```
 
-Generate all supported targets:
+`diff` exits with `0` when generated files are current, and `1` when any target
+file is missing or stale.
 
-```bash
-uv run agent-def-translator translate \
-  --definitions-dir examples/agents \
-  --output-dir generated
-```
+## Documentation
 
-Check generated files without updating them:
-
-```bash
-uv run agent-def-translator diff \
-  --definitions-dir examples/agents \
-  --output-dir generated
-```
-
-Optional E2E smoke is available, but it is not part of the default check/test
-workflow:
-
-```bash
-uv run poe e2e
-```
-
-To also inspect installed external CLI help surfaces when available:
-
-```bash
-uv run poe e2e-live
-```
+- [CLI usage](docs/cli.md): command reference and common workflows.
+- [Definition format](docs/definition-format.md): TOML fields, target tables,
+  prompt composition, and output paths.
+- [Development](docs/development.md): local setup, tests, checks, and optional
+  E2E smoke tests.
 
 ## Python API
+
+The command line interface is the recommended integration point for downstream
+repositories because it keeps callers dependent on the public command contract.
+A Python API is available for advanced embedding:
 
 ```python
 from pathlib import Path
@@ -111,22 +95,19 @@ from pathlib import Path
 from agent_def_translator import Target, generate
 
 generated = generate(
-    definitions_dir=Path("examples/agents"),
+    definitions_dir=Path("agents"),
     output_dir=Path("generated"),
     targets=(Target.CLAUDE, Target.CODEX, Target.COPILOT),
 )
 ```
 
-## Design
+## Scope
 
-- `name`, `description`, and `instructions` are canonical.
-- Platform differences stay in `[targets.<target>]`.
-- Generated files are disposable and should not become the source of truth.
-- Output is deterministic so drift can be detected in CI.
-- Validation renders each selected target, so missing prompt append files and
-  unsupported target-specific metadata types fail before generation.
-- Concrete workflow skills are out of scope; examples use only minimal
-  demonstration skills.
+- Canonical definitions live in TOML files.
+- Platform-specific differences live in `[targets.<target>]` tables.
+- Generated files are deterministic and disposable.
+- Concrete workflow skills are out of scope; examples are intentionally tiny,
+  such as `examples/skills/hello/SKILL.md`.
 
 ## License
 
