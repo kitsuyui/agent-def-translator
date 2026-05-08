@@ -2092,7 +2092,7 @@ def _yaml_lines(key: str, value: Any, indent: int = 0) -> list[str]:
     prefix = " " * indent
     if isinstance(value, dict):
         lines = [f"{prefix}{key}:"]
-        for child_key, child_value in value.items():
+        for child_key, child_value in _sorted_mapping_items(value):
             lines.extend(_yaml_lines(str(child_key), child_value, indent + 2))
         return lines
     if isinstance(value, list):
@@ -2102,7 +2102,7 @@ def _yaml_lines(key: str, value: Any, indent: int = 0) -> list[str]:
         for item in value:
             if isinstance(item, dict):
                 lines.append(f"{prefix}  -")
-                for child_key, child_value in item.items():
+                for child_key, child_value in _sorted_mapping_items(item):
                     lines.extend(
                         _yaml_lines(str(child_key), child_value, indent + 6),
                     )
@@ -2112,6 +2112,12 @@ def _yaml_lines(key: str, value: Any, indent: int = 0) -> list[str]:
                 lines.append(f"{prefix}  - {_render_yaml_scalar(item)}")
         return lines
     return [f"{prefix}{key}: {_render_yaml_scalar(value)}"]
+
+
+def _sorted_mapping_items(
+    payload: dict[Any, Any],
+) -> list[tuple[Any, Any]]:
+    return sorted(payload.items(), key=lambda item: str(item[0]))
 
 
 def _toml_scalar(value: Any) -> str:
