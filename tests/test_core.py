@@ -119,6 +119,51 @@ def test_render_uses_prompt_override_and_hides_prompt_controls(
     assert "prompt_append" not in rendered
 
 
+def test_yaml_nested_mapping_order_is_deterministic(tmp_path: Path) -> None:
+    spec = tmp_path / "sample.toml"
+    first_payload = """
+        name = "sample"
+        description = "Sample"
+        instructions = "Base instructions"
+
+        [targets.copilot]
+        target = "vscode"
+
+        [targets.copilot.metadata]
+        zeta = "last"
+        alpha = "first"
+        items = [{ zeta = "last", alpha = "first" }]
+    """
+    second_payload = """
+        name = "sample"
+        description = "Sample"
+        instructions = "Base instructions"
+
+        [targets.copilot]
+        target = "vscode"
+
+        [targets.copilot.metadata]
+        alpha = "first"
+        zeta = "last"
+        items = [{ alpha = "first", zeta = "last" }]
+    """
+
+    spec.write_text(
+        textwrap.dedent(first_payload).strip() + "\n",
+        encoding="utf-8",
+    )
+    first = render(load_definition(spec), Target.COPILOT)
+    spec.write_text(
+        textwrap.dedent(second_payload).strip() + "\n",
+        encoding="utf-8",
+    )
+    second = render(load_definition(spec), Target.COPILOT)
+
+    assert first == second
+    assert first.index("  alpha:") < first.index("  zeta:")
+    assert first.index("      alpha:") < first.index("      zeta:")
+
+
 def test_generate_and_drift_check(tmp_path: Path) -> None:
     write_sample(tmp_path)
     output_dir = tmp_path / "generated"
