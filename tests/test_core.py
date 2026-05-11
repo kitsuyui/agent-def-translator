@@ -221,9 +221,95 @@ def test_legacy_target_tables_are_accepted(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    definition = load_definition(spec)
+    with pytest.warns(DeprecationWarning, match=r"\[vscode\]"):
+        definition = load_definition(spec)
 
     assert definition.targets[Target.COPILOT]["tools"] == ["search"]
+
+
+def test_legacy_and_targets_conflict_is_rejected(tmp_path: Path) -> None:
+    spec = tmp_path / "conflict.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "conflict"
+            description = "Conflict shape"
+            instructions = "Base instructions"
+
+            [targets.claude]
+            tools = ["Read"]
+
+            [claude]
+            tools = ["Bash"]
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError, match="configured twice"):
+        load_definition(spec)
+
+
+def test_legacy_alias_and_targets_conflict_is_rejected(tmp_path: Path) -> None:
+    spec = tmp_path / "conflict-alias.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "conflict-alias"
+            description = "Conflict via vscode alias"
+            instructions = "Base instructions"
+
+            [targets.copilot]
+            tools = ["search"]
+
+            [vscode]
+            tools = ["fetch"]
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError, match="configured twice"):
+        load_definition(spec)
+
+
+def test_new_targets_syntax_emits_no_deprecation(
+    tmp_path: Path,
+    recwarn: pytest.WarningsRecorder,
+) -> None:
+    spec = tmp_path / "modern.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "modern"
+            description = "Modern shape"
+            instructions = "Base instructions"
+
+            [targets.claude]
+            tools = ["Read"]
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    load_definition(spec)
+
+    deprecations = [
+        warning
+        for warning in recwarn.list
+        if issubclass(warning.category, DeprecationWarning)
+    ]
+    assert deprecations == []
+
+
+def test_subagent_output_path_is_publicly_exported(tmp_path: Path) -> None:
+    from agent_def_translator import output_path
+
+    expected = tmp_path / "claude" / "agents" / "sample.md"
+    assert output_path(tmp_path, "sample", Target.CLAUDE) == expected
 
 
 def test_filename_must_match_definition_name(tmp_path: Path) -> None:

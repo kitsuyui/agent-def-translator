@@ -68,6 +68,15 @@ Supported target names are:
 The loader also accepts legacy top-level tables such as `[claude]`, `[codex]`,
 `[copilot]`, and `[vscode]`. New definitions should use `[targets.<target>]`.
 
+Legacy top-level target tables are deprecated. When the loader sees one, it
+emits a `DeprecationWarning` so callers can detect remaining call sites and
+migrate them. The two syntaxes cannot be mixed for the same target: if a
+definition configures `claude` through both `[targets.claude]` and `[claude]`
+(or any other equivalent pair), `load_definition` raises `DefinitionError`
+instead of silently picking a winner. Only subagent definitions accept the
+legacy syntax; skill, MCP config, and plugin definitions accept only
+`[targets.<target>]`.
+
 ## Prompt Composition
 
 By default, a target uses the canonical `instructions` field.
