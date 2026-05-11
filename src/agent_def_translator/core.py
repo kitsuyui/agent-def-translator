@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import warnings
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -940,12 +941,15 @@ def _load_target_configs(
         raise DefinitionError(f"{path}: [targets] must be a table")
 
     configs: dict[Target, dict[str, Any]] = {}
+    target_sources: dict[Target, str] = {}
     for key, value in targets_payload.items():
         target = Target.parse(str(key))
         if not isinstance(value, dict):
             raise DefinitionError(f"{path}: [targets.{key}] must be a table")
         configs[target] = dict(value)
+        target_sources[target] = f"[targets.{key}]"
 
+    legacy_used: list[str] = []
     for legacy_key in sorted(LEGACY_TARGET_FIELDS):
         if legacy_key not in payload:
             continue
@@ -953,7 +957,27 @@ def _load_target_configs(
         value = payload[legacy_key]
         if not isinstance(value, dict):
             raise DefinitionError(f"{path}: [{legacy_key}] must be a table")
-        configs.setdefault(target, dict(value))
+        if target in configs:
+            existing = target_sources[target]
+            msg = (
+                f"{path}: target {target.value!r} is configured twice: "
+                f"{existing} and [{legacy_key}]. Use only [targets.<target>]."
+            )
+            raise DefinitionError(msg)
+        configs[target] = dict(value)
+        target_sources[target] = f"[{legacy_key}]"
+        legacy_used.append(legacy_key)
+
+    if legacy_used:
+        joined = ", ".join(f"[{key}]" for key in legacy_used)
+        warnings.warn(
+            (
+                f"{path}: legacy top-level target tables ({joined}) are "
+                f"deprecated; use [targets.<target>] instead."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
     return configs
 
