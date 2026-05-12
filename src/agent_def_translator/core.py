@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import tempfile
 import warnings
 from dataclasses import dataclass
 from enum import Enum
@@ -2200,12 +2201,26 @@ def _artifact_has_drift(artifact: GeneratedArtifact) -> bool:
 
 
 def _write_artifact(artifact: GeneratedArtifact) -> None:
+    content = (
+        artifact.content
+        if isinstance(artifact.content, bytes)
+        else artifact.content.encode("utf-8")
+    )
+    parent = artifact.output_path.parent
+    tmp_path: Path | None = None
     try:
-        if isinstance(artifact.content, bytes):
-            artifact.output_path.write_bytes(artifact.content)
-        else:
-            artifact.output_path.write_text(artifact.content, encoding="utf-8")
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            dir=parent,
+            suffix=".tmp",
+        ) as f:
+            tmp_path = Path(f.name)
+            f.write(content)
+        tmp_path.replace(artifact.output_path)
+        tmp_path = None
     except OSError as exc:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
         msg = (
             f"failed to write {artifact.output_path}"
             f" (target={artifact.target.value},"
