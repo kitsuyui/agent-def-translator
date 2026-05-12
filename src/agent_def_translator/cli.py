@@ -215,6 +215,9 @@ def main(argv: list[str] | None = None) -> int:
     except DefinitionError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    except OSError as exc:
+        print(f"io-error: {exc}", file=sys.stderr)
+        return 3
 
 
 def _normalized_command(args: argparse.Namespace) -> tuple[str, str]:

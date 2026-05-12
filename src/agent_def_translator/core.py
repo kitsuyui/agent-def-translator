@@ -2200,11 +2200,18 @@ def _artifact_has_drift(artifact: GeneratedArtifact) -> bool:
 
 
 def _write_artifact(artifact: GeneratedArtifact) -> None:
-    if isinstance(artifact.content, bytes):
-        artifact.output_path.write_bytes(artifact.content)
-        _chmod_artifact(artifact)
-        return
-    artifact.output_path.write_text(artifact.content, encoding="utf-8")
+    try:
+        if isinstance(artifact.content, bytes):
+            artifact.output_path.write_bytes(artifact.content)
+        else:
+            artifact.output_path.write_text(artifact.content, encoding="utf-8")
+    except OSError as exc:
+        msg = (
+            f"failed to write {artifact.output_path}"
+            f" (target={artifact.target.value},"
+            f" source={artifact.source_path}): {exc}"
+        )
+        raise OSError(msg) from exc
     _chmod_artifact(artifact)
 
 
@@ -2215,5 +2222,15 @@ def _artifact_mode_has_drift(artifact: GeneratedArtifact) -> bool:
 
 
 def _chmod_artifact(artifact: GeneratedArtifact) -> None:
-    if artifact.mode is not None:
+    if artifact.mode is None:
+        return
+    try:
         artifact.output_path.chmod(artifact.mode)
+    except OSError as exc:
+        msg = (
+            f"failed to chmod {artifact.output_path}"
+            f" (target={artifact.target.value},"
+            f" source={artifact.source_path},"
+            f" mode={oct(artifact.mode)}): {exc}"
+        )
+        raise OSError(msg) from exc
