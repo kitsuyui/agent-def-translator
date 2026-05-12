@@ -14,7 +14,9 @@ prompt_append_file = "../prompts/repo-explorer.claude.md"
 [targets.codex]
 model = "gpt-5.4-mini"
 sandbox_mode = "read-only"
+model_reasoning_effort = "medium"
 
 [targets.copilot]
 tools = ["search", "fetch"]
 target = "vscode"
+user-invocable = false

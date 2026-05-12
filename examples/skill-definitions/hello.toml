@@ -1,3 +1,6 @@
+# Skill definition in TOML input format.
+# agent-def-translator reads this and generates target-native output files
+# (e.g., examples/skills/hello/SKILL.md for Claude Code).
 name = "hello"
 description = "Say hello when the user asks for a greeting."
 instructions = "Reply with one short greeting."
