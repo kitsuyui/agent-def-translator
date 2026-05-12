@@ -1,0 +1,29 @@
+name: Security Settings Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly check to detect accidental setting changes
+    - cron: '0 9 * * 1'
+
+jobs:
+  check-secret-scanning-validity:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check secret scanning validity checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          status=$(gh api /repos/${{ github.repository }} \
+            --jq '.security_and_analysis.secret_scanning_validity_checks.status')
+          echo "secret_scanning_validity_checks: $status"
+          if [ "$status" != "enabled" ]; then
+            echo "::error::secret_scanning_validity_checks is disabled."
+            echo "Enable it at: https://github.com/${{ github.repository }}/settings/security_analysis"
+            exit 1
+          fi
