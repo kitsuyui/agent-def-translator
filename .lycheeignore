@@ -1,4 +1,5 @@
 # Exclude domains that are not reliably reachable from CI
 https://agentskills.io/
+https://openai.com/
 https://platform.openai.com/
 https://help.openai.com/
