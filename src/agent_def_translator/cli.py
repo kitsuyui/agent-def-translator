@@ -4,6 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from agent_def_translator._version import __version__
 from agent_def_translator.core import (
     DefinitionError,
     Target,
@@ -24,6 +25,11 @@ from agent_def_translator.core import (
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="agent-def-translator")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subagent = subparsers.add_parser(
