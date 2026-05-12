@@ -1,0 +1,2 @@
+# Exclude domains that are not reliably reachable from CI
+https://agentskills.io/
