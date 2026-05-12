@@ -749,8 +749,22 @@ def generate_plugins(
     targets: tuple[Target, ...] = tuple(Target),
     write: bool = True,
 ) -> list[GeneratedArtifact]:
+    definitions = list(load_plugin_definitions(definitions_dir))
+    if Target.CODEX in targets:
+        codex_plugins = [
+            d for d in definitions if _plugin_target_enabled(d, Target.CODEX)
+        ]
+        if len(codex_plugins) > 1:
+            names = ", ".join(d.name for d in codex_plugins)
+            msg = (
+                f"{definitions_dir}: multiple Codex-enabled plugins: "
+                f"{names}. All write to the same codex/marketplace.json"
+                " and would silently overwrite each other. "
+                "Enable Codex for at most one plugin per directory."
+            )
+            raise DefinitionError(msg)
     artifacts: list[GeneratedArtifact] = []
-    for definition in load_plugin_definitions(definitions_dir):
+    for definition in definitions:
         for target in targets:
             if not _plugin_target_enabled(definition, target):
                 continue

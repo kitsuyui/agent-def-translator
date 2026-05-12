@@ -966,3 +966,54 @@ def test_plugin_target_rejects_unknown_fields(tmp_path: Path) -> None:
 
     with pytest.raises(DefinitionError, match=r"unknown fields: typo"):
         load_plugin_definition(spec)
+
+
+def test_generate_plugins_rejects_multiple_codex_plugins(
+    tmp_path: Path,
+) -> None:
+    definitions_dir = tmp_path / "plugins"
+    definitions_dir.mkdir()
+    plugin_toml = (
+        textwrap.dedent(
+            """
+        name = "{name}"
+        description = "Plugin {name}."
+        version = "0.1.0"
+        author = "Test"
+        repository = "https://example.com/{name}"
+        homepage = "https://example.com/{name}"
+        license = "MIT"
+
+        [components]
+
+        [interface]
+        display_name = "{name}"
+        short_description = "Test plugin."
+        long_description = "Test plugin."
+        developer_name = "Test"
+        category = "Productivity"
+        capabilities = []
+        website_url = "https://example.com/{name}"
+
+        [marketplace]
+        name = "{name}-local"
+
+        [targets.codex]
+        """,
+        ).strip()
+        + "\n"
+    )
+    (definitions_dir / "plugin-a.toml").write_text(
+        plugin_toml.format(name="plugin-a"),
+        encoding="utf-8",
+    )
+    (definitions_dir / "plugin-b.toml").write_text(
+        plugin_toml.format(name="plugin-b"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError, match=r"multiple Codex-enabled"):
+        generate_plugins(
+            definitions_dir=definitions_dir,
+            output_dir=tmp_path / "out",
+        )
