@@ -1119,7 +1119,7 @@ def _render_claude(definition: AgentDefinition) -> str:
     frontmatter = {
         "name": definition.name,
         "description": definition.description,
-        **config,
+        **dict(sorted(config.items())),
     }
     lines = ["---"]
     for key, value in frontmatter.items():
@@ -1144,7 +1144,7 @@ def _render_codex(definition: AgentDefinition) -> str:
         "name": definition.name,
         "description": definition.description,
         "developer_instructions": _compose_prompt(definition, Target.CODEX),
-        **_target_config(definition, Target.CODEX),
+        **dict(sorted(_target_config(definition, Target.CODEX).items())),
     }
     lines = [f"# {_generated_comment(definition)}"]
     _write_toml_table(lines, [], payload)
@@ -1155,7 +1155,7 @@ def _render_copilot(definition: AgentDefinition) -> str:
     frontmatter = {
         "name": definition.name,
         "description": definition.description,
-        **_target_config(definition, Target.COPILOT),
+        **dict(sorted(_target_config(definition, Target.COPILOT).items())),
     }
     lines = ["---"]
     for key, value in frontmatter.items():
