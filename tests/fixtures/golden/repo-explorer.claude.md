@@ -1,9 +1,9 @@
 ---
 name: "repo-explorer"
 description: "Read repository context and summarize relevant files."
-tools: "Read, Grep, Glob"
-permission_mode: "plan"
 model: "haiku"
+permission_mode: "plan"
+tools: "Read, Grep, Glob"
 ---
 
 <!-- Generated from repo-explorer.toml by agent-def-translator. -->

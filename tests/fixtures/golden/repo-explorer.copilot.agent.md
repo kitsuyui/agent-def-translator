@@ -1,10 +1,10 @@
 ---
 name: "repo-explorer"
 description: "Read repository context and summarize relevant files."
+target: "vscode"
 tools:
   - "search"
   - "fetch"
-target: "vscode"
 user-invocable: false
 ---
 
