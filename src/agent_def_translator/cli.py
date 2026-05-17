@@ -30,7 +30,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(
+        dest="command",
+        required=True,
+        metavar="{subagent,skill,mcp,plugin}",
+    )
 
     subagent = subparsers.add_parser(
         "subagent",
@@ -56,10 +60,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     _add_definition_args(subagent_diff, output=True)
 
-    agent = subparsers.add_parser(
-        "agent",
-        help="Deprecated alias for subagent.",
-    )
+    agent = subparsers.add_parser("agent")
     agent_subparsers = agent.add_subparsers(
         dest="resource_command",
         required=True,
@@ -152,40 +153,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     _add_definition_args(plugin_diff, output=True)
 
-    validate = subparsers.add_parser(
-        "validate",
-        help="Deprecated alias for subagent validate.",
-    )
+    validate = subparsers.add_parser("validate")
     _add_definition_args(validate, output=False)
 
-    validate_agents = subparsers.add_parser(
-        "validate-agents",
-        help="Deprecated alias for subagent validate.",
-    )
+    validate_agents = subparsers.add_parser("validate-agents")
     _add_definition_args(validate_agents, output=False)
 
-    translate = subparsers.add_parser(
-        "translate",
-        help="Deprecated alias for subagent translate.",
-    )
+    translate = subparsers.add_parser("translate")
     _add_definition_args(translate, output=True)
 
-    translate_agents = subparsers.add_parser(
-        "translate-agents",
-        help="Deprecated alias for subagent translate.",
-    )
+    translate_agents = subparsers.add_parser("translate-agents")
     _add_definition_args(translate_agents, output=True)
 
-    diff = subparsers.add_parser(
-        "diff",
-        help="Deprecated alias for subagent diff.",
-    )
+    diff = subparsers.add_parser("diff")
     _add_definition_args(diff, output=True)
 
-    diff_agents = subparsers.add_parser(
-        "diff-agents",
-        help="Deprecated alias for subagent diff.",
-    )
+    diff_agents = subparsers.add_parser("diff-agents")
     _add_definition_args(diff_agents, output=True)
 
     return parser.parse_args(argv)
