@@ -6,6 +6,34 @@ import pytest
 
 from agent_def_translator.cli import main
 
+_ACTIVE_COMMANDS = ("subagent", "skill", "mcp", "plugin")
+_DEPRECATED_COMMANDS = (
+    "agent",
+    "validate",
+    "validate-agents",
+    "translate",
+    "translate-agents",
+    "diff",
+    "diff-agents",
+)
+
+
+def test_cli_help_shows_only_active_commands(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--help"])
+    assert exc_info.value.code == 0
+    help_text = capsys.readouterr().out
+    assert "{subagent,skill,mcp,plugin}" in help_text
+    for cmd in _ACTIVE_COMMANDS:
+        assert cmd in help_text
+    # Deprecated commands must not appear as listed subcommands.
+    # Leading spaces avoid matching "agent" inside "agent-def-translator".
+    for cmd in _DEPRECATED_COMMANDS:
+        assert f"    {cmd}" not in help_text
+    assert "Deprecated" not in help_text
+
 
 def test_cli_subagent_validate_and_translate(tmp_path: Path) -> None:
     definitions_dir = tmp_path / "agents"
