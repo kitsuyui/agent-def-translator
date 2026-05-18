@@ -357,10 +357,11 @@ def load_skill_definition(
     targets = _load_target_configs(path, payload)
     for target, target_config in targets.items():
         _validate_skill_target_config(path, target, target_config)
-        _validate_skill_config(
-            path,
-            _skill_render_config(config, target_config),
-        )
+        if target_config.get("enabled", True) is not False:
+            _validate_skill_config(
+                path,
+                _skill_render_config(config, target_config),
+            )
     return SkillDefinition(
         name=name,
         description=payload["description"].strip(),
@@ -428,9 +429,10 @@ def load_mcp_config_definition(
     targets = _load_target_configs(path, payload)
     for target, target_config in targets.items():
         _validate_mcp_target_config(path, target, target_config)
-        rendered_config = _mcp_render_config(config, target_config)
-        _validate_mcp_transport_shape(path, transport, rendered_config)
-        _validate_mcp_config(path, rendered_config)
+        if target_config.get("enabled", True) is not False:
+            rendered_config = _mcp_render_config(config, target_config)
+            _validate_mcp_transport_shape(path, transport, rendered_config)
+            _validate_mcp_config(path, rendered_config)
     return McpConfigDefinition(
         name=name,
         description=payload["description"].strip(),
@@ -491,10 +493,11 @@ def load_plugin_definition(
     targets = _load_target_configs(path, payload)
     for target, target_config in targets.items():
         _validate_plugin_target_config(path, target, target_config)
-        _validate_plugin_config(
-            path,
-            _plugin_render_config(config, target_config),
-        )
+        if target_config.get("enabled", True) is not False:
+            _validate_plugin_config(
+                path,
+                _plugin_render_config(config, target_config),
+            )
     return PluginDefinition(
         name=name,
         description=payload["description"].strip(),
