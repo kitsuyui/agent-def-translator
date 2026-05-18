@@ -601,6 +601,33 @@ def test_skill_target_rejects_unknown_fields(tmp_path: Path) -> None:
         load_skill_definition(spec)
 
 
+def test_skill_disabled_target_skips_render_validation(
+    tmp_path: Path,
+) -> None:
+    # The disabled claude target sets `allowed_tools` to a string instead of a
+    # list, which would fail _validate_skill_config. The loader must skip
+    # render validation for disabled targets.
+    spec = tmp_path / "quarantine.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "quarantine"
+            description = "Skill under quarantine."
+            instructions = "Base instructions."
+
+            [targets.claude]
+            enabled = false
+            allowed_tools = "not-a-list"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    definition = load_skill_definition(spec)
+    assert definition.targets[Target.CLAUDE].get("enabled") is False
+
+
 def test_skill_name_must_use_portable_shape(tmp_path: Path) -> None:
     spec = tmp_path / "Bad_Name.toml"
     spec.write_text(
@@ -743,6 +770,35 @@ def test_mcp_target_rejects_unknown_fields(tmp_path: Path) -> None:
 
     with pytest.raises(DefinitionError, match=r"unknown fields: typo"):
         load_mcp_config_definition(spec)
+
+
+def test_mcp_disabled_target_skips_render_validation(
+    tmp_path: Path,
+) -> None:
+    # The disabled claude target overrides `command` with an empty string,
+    # which would fail _validate_mcp_transport_shape (stdio requires a
+    # non-empty command). The loader must skip render validation for disabled
+    # targets so the file can be loaded while the target is quarantined.
+    spec = tmp_path / "quarantine.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "quarantine"
+            description = "MCP config under quarantine."
+            transport = "stdio"
+            command = "mycmd"
+
+            [targets.claude]
+            enabled = false
+            command = ""
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    definition = load_mcp_config_definition(spec)
+    assert definition.targets[Target.CLAUDE].get("enabled") is False
 
 
 def write_plugin_sample(root: Path) -> Path:
@@ -966,6 +1022,33 @@ def test_plugin_target_rejects_unknown_fields(tmp_path: Path) -> None:
 
     with pytest.raises(DefinitionError, match=r"unknown fields: typo"):
         load_plugin_definition(spec)
+
+
+def test_plugin_disabled_target_skips_render_validation(
+    tmp_path: Path,
+) -> None:
+    # The disabled codex target sets `keywords` to a string instead of a list,
+    # which would fail _validate_plugin_config. The loader must skip render
+    # validation for disabled targets.
+    spec = tmp_path / "quarantine.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "quarantine"
+            description = "Plugin under quarantine."
+            version = "0.1.0"
+
+            [targets.codex]
+            enabled = false
+            keywords = "not-a-list"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    definition = load_plugin_definition(spec)
+    assert definition.targets[Target.CODEX].get("enabled") is False
 
 
 def test_generate_plugins_rejects_multiple_codex_plugins(
