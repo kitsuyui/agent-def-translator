@@ -714,7 +714,10 @@ def _plugin_mcp_artifact(
 def _merge_json_mcp_fragments(source_root: Path) -> dict[str, Any]:
     payload: dict[str, Any] = {"mcpServers": {}}
     for path in sorted(source_root.glob("*.json")):
-        fragment = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            fragment = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            raise json.JSONDecodeError(f"{path}: {e.msg}", e.doc, e.pos) from e
         servers = fragment.get("mcpServers")
         if not isinstance(servers, dict):
             continue
@@ -725,7 +728,10 @@ def _merge_json_mcp_fragments(source_root: Path) -> dict[str, Any]:
 def _merge_codex_mcp_fragments(source_root: Path) -> dict[str, Any]:
     payload: dict[str, Any] = {"mcpServers": {}}
     for path in sorted(source_root.glob("*.toml")):
-        fragment = tomllib.loads(path.read_text(encoding="utf-8"))
+        try:
+            fragment = tomllib.loads(path.read_text(encoding="utf-8"))
+        except tomllib.TOMLDecodeError as e:
+            raise tomllib.TOMLDecodeError(f"{path}: {e}") from e
         servers = fragment.get("mcp_servers")
         if not isinstance(servers, dict):
             continue
