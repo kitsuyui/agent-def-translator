@@ -18,7 +18,7 @@ from agent_def_translator._common import (
     Target,
     _artifact_has_drift,
     _load_target_configs,
-    _write_artifact,
+    _write_artifacts_batch,
     _write_toml_table,
     _yaml_lines,
 )
@@ -128,9 +128,8 @@ def generate(
                 content=content,
             )
             artifacts.append(artifact)
-            if write:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                _write_artifact(artifact)
+    if write:
+        _write_artifacts_batch(artifacts)
     return artifacts
 
 
