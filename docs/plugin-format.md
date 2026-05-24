@@ -135,6 +135,14 @@ capabilities = ["Read"]
 website_url = "https://example.com/hello-bundle"
 ```
 
+When `[interface]` is omitted or individual fields are missing, the translator
+fills in these defaults:
+
+- `displayName` ← `name`
+- `shortDescription` and `longDescription` ← `description`
+- `developerName` ← `author` (if present)
+- `category` ← `"Productivity"`
+
 ## Marketplace
 
 The `[marketplace]` table controls the generated Codex marketplace file:

@@ -296,6 +296,8 @@ def _render_copilot(definition: AgentDefinition) -> str:
 
 
 def _normalize_claude_value(key: str, value: Any) -> Any:
+    # Claude frontmatter represents tool lists as a comma-separated string
+    # rather than a YAML list. Codex and Copilot keep the list as-is.
     if key in {"tools", "disallowedTools", "allowedTools"} and isinstance(
         value,
         list,

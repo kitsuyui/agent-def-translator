@@ -24,6 +24,7 @@ class Target(str, Enum):
 
     @classmethod
     def parse(cls, value: str) -> Target:
+        # "vscode" is accepted as a deprecated alias for COPILOT.
         normalized = value.strip().lower()
         if normalized == "vscode":
             return cls.COPILOT
