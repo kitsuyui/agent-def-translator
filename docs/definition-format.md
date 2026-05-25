@@ -140,3 +140,12 @@ Supported scalar values are:
 
 Lists and nested tables are supported for YAML/TOML output where the target
 format can represent them. Nested lists are rejected.
+
+### Target-specific field shapes
+
+Some fields are normalized differently per target:
+
+- **`tools`, `disallowedTools`, `allowedTools`**: Supply a list in the definition.
+  For Claude output the list is joined into a comma-separated string (e.g.,
+  `"Read, Grep, Glob"`), because that is the shape Claude frontmatter expects.
+  For Codex and Copilot the list is preserved as-is.
