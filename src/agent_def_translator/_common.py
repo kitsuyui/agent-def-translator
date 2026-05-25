@@ -264,6 +264,45 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
     _chmod_artifact(artifact)
 
 
+def _write_artifacts_batch(artifacts: list[GeneratedArtifact]) -> None:
+    """Write artifacts with a minimized partial-state window.
+
+    Phase 1 (slow): write all content to temp files in the same directories
+    as the final paths so rename is atomic on POSIX.
+    Phase 2 (fast): rename all temp files to their final paths.
+
+    On failure during phase 1, any created temp files are removed.
+    """
+    for artifact in artifacts:
+        artifact.output_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_paths: list[Path | None] = [None] * len(artifacts)
+    try:
+        for i, artifact in enumerate(artifacts):
+            content = (
+                artifact.content
+                if isinstance(artifact.content, bytes)
+                else artifact.content.encode("utf-8")
+            )
+            with tempfile.NamedTemporaryFile(
+                delete=False,
+                dir=artifact.output_path.parent,
+                suffix=".tmp",
+            ) as f:
+                tmp_paths[i] = Path(f.name)
+                f.write(content)
+        for i, artifact in enumerate(artifacts):
+            tmp = tmp_paths[i]
+            if tmp is not None:
+                tmp.replace(artifact.output_path)
+                tmp_paths[i] = None
+            _chmod_artifact(artifact)
+    except OSError:
+        for tmp in tmp_paths:
+            if tmp is not None:
+                tmp.unlink(missing_ok=True)
+        raise
+
+
 def _artifact_mode_has_drift(artifact: GeneratedArtifact) -> bool:
     if artifact.mode is None:
         return False

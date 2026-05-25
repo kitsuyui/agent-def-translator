@@ -20,7 +20,7 @@ from agent_def_translator._common import (
     _is_string_dict,
     _is_string_list,
     _load_target_configs,
-    _write_artifact,
+    _write_artifacts_batch,
     _write_toml_table,
 )
 
@@ -188,9 +188,8 @@ def generate_mcp_configs(
                 content=content,
             )
             artifacts.append(artifact)
-            if write:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                _write_artifact(artifact)
+    if write:
+        _write_artifacts_batch(artifacts)
     return artifacts
 
 

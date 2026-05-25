@@ -20,7 +20,7 @@ from agent_def_translator._common import (
     _is_json_value,
     _is_string_list,
     _load_target_configs,
-    _write_artifact,
+    _write_artifacts_batch,
 )
 
 PLUGIN_ROOT_FIELDS = frozenset(
@@ -262,13 +262,8 @@ def generate_plugins(
                     ),
                 )
             artifacts.extend(target_artifacts)
-            if write:
-                for artifact in target_artifacts:
-                    artifact.output_path.parent.mkdir(
-                        parents=True,
-                        exist_ok=True,
-                    )
-                    _write_artifact(artifact)
+    if write:
+        _write_artifacts_batch(artifacts)
     return artifacts
 
 
