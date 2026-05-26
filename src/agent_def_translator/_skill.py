@@ -385,6 +385,21 @@ def _skill_render_config(
     }
 
 
+def _validate_invocation_policy_coherence(
+    path: Path,
+    config: dict[str, Any],
+) -> None:
+    if (
+        config.get("allow_implicit_invocation") is True
+        and config.get("disable_model_invocation") is True
+    ):
+        raise DefinitionError(
+            f"{path}: allow_implicit_invocation=true conflicts with"
+            " disable_model_invocation=true; implicit invocation cannot be"
+            " allowed when model invocation is disabled",
+        )
+
+
 def _validate_skill_config(path: Path, config: dict[str, Any]) -> None:
     for key in (
         "name",
@@ -419,6 +434,7 @@ def _validate_skill_config(path: Path, config: dict[str, Any]) -> None:
         raise DefinitionError(
             f"{path}: allow_implicit_invocation must be a boolean",
         )
+    _validate_invocation_policy_coherence(path, config)
 
     for key in ("allowed_tools", "paths"):
         value = config.get(key)

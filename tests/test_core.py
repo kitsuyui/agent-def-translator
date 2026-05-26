@@ -601,6 +601,30 @@ def test_skill_target_rejects_unknown_fields(tmp_path: Path) -> None:
         load_skill_definition(spec)
 
 
+def test_skill_conflicting_invocation_policy_via_target_is_rejected(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "bad"
+            description = "Bad skill."
+            instructions = "Do the thing."
+            disable_model_invocation = true
+
+            [targets.codex]
+            allow_implicit_invocation = true
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError, match="conflicts with"):
+        load_skill_definition(spec)
+
+
 def test_skill_disabled_target_skips_render_validation(
     tmp_path: Path,
 ) -> None:
