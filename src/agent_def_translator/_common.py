@@ -11,6 +11,9 @@ from typing import Any
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 LEGACY_TARGET_FIELDS = frozenset({"claude", "codex", "vscode", "copilot"})
+DEPRECATION_REMOVAL_NOTICE = (
+    "scheduled for removal no earlier than agent-def-translator 1.0.0"
+)
 
 
 class DefinitionError(ValueError):
@@ -24,7 +27,7 @@ class Target(str, Enum):
 
     @classmethod
     def parse(cls, value: str) -> Target:
-        # "vscode" is accepted as a deprecated alias for COPILOT.
+        # "vscode" is accepted as a compatibility alias for COPILOT.
         normalized = value.strip().lower()
         if normalized == "vscode":
             return cls.COPILOT
@@ -88,7 +91,8 @@ def _load_target_configs(
         warnings.warn(
             (
                 f"{path}: legacy top-level target tables ({joined}) are "
-                f"deprecated; use [targets.<target>] instead."
+                f"deprecated and {DEPRECATION_REMOVAL_NOTICE}; "
+                "use [targets.<target>] instead."
             ),
             DeprecationWarning,
             stacklevel=2,
