@@ -1124,3 +1124,33 @@ def test_generate_plugins_rejects_multiple_codex_plugins(
             definitions_dir=definitions_dir,
             output_dir=tmp_path / "out",
         )
+
+
+def test_skill_bundle_rejects_too_many_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _skill
+
+    monkeypatch.setattr(_skill, "_MAX_BUNDLE_FILE_COUNT", 2)
+    write_skill_sample(tmp_path)
+    # The sample bundle already has 5 files; with limit=2 it should reject.
+    with pytest.raises(DefinitionError, match="too many files"):
+        generate_skills(
+            definitions_dir=tmp_path / "skills",
+            output_dir=tmp_path / "out",
+        )
+
+
+def test_skill_bundle_rejects_oversized_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _skill
+
+    monkeypatch.setattr(_skill, "_MAX_BUNDLE_FILE_BYTES", 10)
+    write_skill_sample(tmp_path)
+    # The sample bundle contains files larger than 10 bytes.
+    with pytest.raises(DefinitionError, match="too large"):
+        generate_skills(
+            definitions_dir=tmp_path / "skills",
+            output_dir=tmp_path / "out",
+        )

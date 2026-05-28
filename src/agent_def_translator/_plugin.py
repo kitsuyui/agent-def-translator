@@ -23,6 +23,9 @@ from agent_def_translator._common import (
     _write_artifacts_batch,
 )
 
+_MAX_COPY_TREE_FILE_COUNT = 1000
+_MAX_COPY_TREE_FILE_BYTES = 10 * 1024 * 1024
+
 PLUGIN_ROOT_FIELDS = frozenset(
     {
         "name",
@@ -656,9 +659,22 @@ def _copy_tree_artifacts(
         msg = f"component directory not found: {source_root}"
         raise DefinitionError(msg)
     artifacts: list[GeneratedArtifact] = []
+    file_count = 0
     for path in sorted(source_root.rglob("*")):
         if not path.is_file():
             continue
+        file_count += 1
+        if file_count > _MAX_COPY_TREE_FILE_COUNT:
+            raise DefinitionError(
+                f"{source_root}: directory has too many files"
+                f" (max {_MAX_COPY_TREE_FILE_COUNT})",
+            )
+        file_size = path.stat().st_size
+        if file_size > _MAX_COPY_TREE_FILE_BYTES:
+            raise DefinitionError(
+                f"{path}: file too large"
+                f" ({file_size} bytes, max {_MAX_COPY_TREE_FILE_BYTES})",
+            )
         artifacts.append(
             GeneratedArtifact(
                 target=target,
