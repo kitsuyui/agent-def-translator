@@ -145,6 +145,12 @@ For example, `skills/hello/scripts/run.sh` is copied to
 Copied resource files preserve their source permission bits, including
 executable bits for helper scripts.
 
+If `source_dir` is omitted, the translator looks for a directory with the same
+name as the skill definition beside the TOML file. For
+`skills/hello.toml`, `skills/hello/` is copied as the resource bundle when that
+directory exists. If no same-named directory exists, no bundled resources are
+copied.
+
 This follows the Agent Skills model: `SKILL.md` is the required entrypoint,
 while additional files such as scripts, references, templates, examples,
 runbooks, and assets are loaded by target agents only when the generated
