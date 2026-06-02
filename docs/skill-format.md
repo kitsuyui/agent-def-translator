@@ -29,16 +29,22 @@ be 1-64 characters long and match the filename stem.
 name = "hello"
 description = "Say hello when the user asks for a greeting."
 instructions = "Reply with one short greeting."
-source_dir = "hello"
 ```
 
 - `name`: portable skill identifier.
 - `description`: short trigger-facing description.
 - `instructions`: Markdown body written into generated `SKILL.md` files.
-- `source_dir`: optional portable skill resource directory, relative to
-  `--definitions-dir`. All files in this directory are copied into each
-  generated target skill directory, except `SKILL.md` and
-  `agents/openai.yaml`, which are generated from the canonical definition.
+
+## Source Directory
+
+The optional `source_dir` field names a portable skill resource directory,
+relative to `--definitions-dir`. All files in this directory are copied into
+each generated target skill directory, except `SKILL.md` and
+`agents/openai.yaml`, which are generated from the canonical definition.
+
+```toml
+source_dir = "hello"
+```
 
 ## Portable Frontmatter
 
@@ -75,6 +81,15 @@ allow_implicit_invocation = true
 [targets.copilot]
 user_invocable = false
 ```
+
+Claude-specific fields under `[targets.claude]`:
+
+- `agent`: agent type passed to the generated `SKILL.md` frontmatter.
+- `model`: Claude model override written to the generated `SKILL.md` frontmatter.
+- `effort`: effort level written to the generated `SKILL.md` frontmatter.
+- `hooks`: hooks configuration written to the generated `SKILL.md` frontmatter.
+- `paths`: allowed paths written to the generated `SKILL.md` frontmatter.
+- `shell`: shell configuration written to the generated `SKILL.md` frontmatter.
 
 Supported target names are:
 
