@@ -46,6 +46,17 @@ run, but print a warning to stderr. They are scheduled for removal no earlier
 than `agent-def-translator` 1.0.0; use the resource-oriented `subagent`
 commands before then.
 
+### Exit Codes
+
+Commands use these process exit codes:
+
+- `0`: the command completed successfully.
+- `1`: `diff` found missing or stale generated files.
+- `2`: a definition error prevented validation or rendering. The command prints
+  `error: ...` to stderr.
+- `3`: an I/O error prevented reading inputs or writing outputs. The command
+  prints `io-error: ...` to stderr.
+
 ### validate
 
 Validate definition files and render the selected target projections in memory.
