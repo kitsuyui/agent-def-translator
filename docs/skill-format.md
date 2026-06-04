@@ -82,7 +82,9 @@ Supported target names are:
 - `codex`
 - `copilot`
 
-`vscode` is accepted as an alias for `copilot` in target tables.
+`vscode` is accepted as a compatibility alias for `copilot` in target tables.
+It is not scheduled for removal in the current schema, but new definitions
+should prefer `copilot` for clarity.
 
 Use `enabled = false` to skip a target:
 

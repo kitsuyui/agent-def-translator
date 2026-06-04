@@ -42,7 +42,9 @@ bundle.
 The legacy top-level `validate`, `translate`, and `diff` commands, plus
 `validate-agents`, `translate-agents`, `diff-agents`, and the `agent` resource,
 remain deprecated aliases for the corresponding `subagent` commands. They still
-run, but print a warning to stderr.
+run, but print a warning to stderr. They are scheduled for removal no earlier
+than `agent-def-translator` 1.0.0; use the resource-oriented `subagent`
+commands before then.
 
 ### validate
 
@@ -259,5 +261,6 @@ Supported targets are:
 - `codex`
 - `copilot`
 
-`vscode` is accepted as an alias for `copilot` in definition files for
-compatibility, but new CLI usage should prefer `copilot`.
+`vscode` is accepted as a compatibility alias for `copilot` in definition
+files. It is not scheduled for removal in the current schema, but new
+definition files should prefer `copilot` for clarity.

@@ -4,6 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from agent_def_translator._common import DEPRECATION_REMOVAL_NOTICE
 from agent_def_translator._version import __version__
 from agent_def_translator.core import (
     DefinitionError,
@@ -245,7 +246,8 @@ def _warn_deprecated_command(
     if replacement is None:
         return
     print(
-        "warning: this command is deprecated; "
+        f"warning: this command is deprecated and "
+        f"{DEPRECATION_REMOVAL_NOTICE}; "
         f"use 'agent-def-translator {replacement}' instead.",
         file=sys.stderr,
     )

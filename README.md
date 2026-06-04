@@ -103,7 +103,8 @@ uvx agent-def-translator plugin translate \
 ```
 
 Top-level commands such as `translate` and the older `agent` resource remain as
-deprecated aliases for compatibility. Prefer the resource-oriented command:
+deprecated aliases for compatibility. They are scheduled for removal no earlier
+than `agent-def-translator` 1.0.0. Prefer the resource-oriented command:
 
 ```bash
 uvx agent-def-translator subagent translate \

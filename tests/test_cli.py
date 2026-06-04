@@ -199,6 +199,7 @@ def test_cli_deprecated_subagent_aliases_warn(
 
     captured = capsys.readouterr()
     assert "deprecated" in captured.err
+    assert "no earlier than agent-def-translator 1.0.0" in captured.err
     assert replacement in captured.err
 
 

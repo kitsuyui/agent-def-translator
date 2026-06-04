@@ -221,10 +221,13 @@ def test_legacy_target_tables_are_accepted(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.warns(DeprecationWarning, match=r"\[vscode\]"):
+    with pytest.warns(DeprecationWarning, match=r"\[vscode\]") as warnings:
         definition = load_definition(spec)
 
     assert definition.targets[Target.COPILOT]["tools"] == ["search"]
+    assert "no earlier than agent-def-translator 1.0.0" in str(
+        warnings[0].message,
+    )
 
 
 def test_legacy_and_targets_conflict_is_rejected(tmp_path: Path) -> None:
@@ -1127,7 +1130,8 @@ def test_generate_plugins_rejects_multiple_codex_plugins(
 
 
 def test_skill_bundle_rejects_too_many_files(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from agent_def_translator import _skill
 
@@ -1142,7 +1146,8 @@ def test_skill_bundle_rejects_too_many_files(
 
 
 def test_skill_bundle_rejects_oversized_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from agent_def_translator import _skill
 
