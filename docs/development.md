@@ -28,6 +28,20 @@ Run coverage:
 uv run poe coverage-xml
 ```
 
+## Coverage Gates
+
+The `octocov` workflow treats the collected metrics as CI gates, not just PR
+comment data:
+
+- line coverage must stay at or above 80%
+- the code-to-test ratio must stay at or above 1:0.4
+- test execution time in GitHub Actions must stay under 2 minutes
+
+The coverage badge in the README is generated from the same octocov reporting
+path. The full Python version matrix still runs in `python-test.yml`; octocov
+uses its dedicated Python 3.14 job as the reporting source for the badge and
+threshold checks.
+
 ## Test Selection
 
 E2E and live tests are implemented as pytest tests with custom markers. The

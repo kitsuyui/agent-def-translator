@@ -1,14 +1,18 @@
 # https://github.com/k1LoW/octocov?tab=readme-ov-file#configuration
 coverage:
+  acceptable: 80%
   paths:
     - coverage.xml
 codeToTestRatio:
+  acceptable: 1:0.4
   code:
-    - "**/*.py"
+    - "src/**/*.py"
   test:
+    - "tests/*.py"
     - "tests/**/*.py"
 testExecutionTime:
   if: true
+  acceptable: 2min
 diff:
   datastores:
     - artifact://${GITHUB_REPOSITORY}
