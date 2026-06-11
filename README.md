@@ -116,13 +116,17 @@ The CLI is organized as resource + predicate commands. Subagent, skill, MCP
 config, and plugin bundle translation are implemented today.
 
 ```bash
-uvx agent-def-translator subagent translate --definitions-dir agents --output-dir generated
+uvx agent-def-translator subagent translate \
+  --definitions-dir agents \
+  --output-dir generated
 uvx agent-def-translator skill validate --definitions-dir skills
 uvx agent-def-translator skill translate --definitions-dir skills --output-dir generated
 uvx agent-def-translator mcp validate --definitions-dir mcp
 uvx agent-def-translator mcp translate --definitions-dir mcp --output-dir generated
 uvx agent-def-translator plugin validate --definitions-dir plugins
-uvx agent-def-translator plugin translate --definitions-dir plugins --output-dir generated
+uvx agent-def-translator plugin translate \
+  --definitions-dir plugins \
+  --output-dir generated
 ```
 
 ## Documentation
@@ -142,6 +146,8 @@ uvx agent-def-translator plugin translate --definitions-dir plugins --output-dir
   such as MCP.
 - [Development](docs/development.md): local setup, tests, checks, and optional
   E2E smoke tests.
+- [Release process](docs/release.md): version policy, release checklist,
+  prerelease flow, and publish failure notes.
 
 ## Python API
 
@@ -178,8 +184,8 @@ generated = generate(
 
 ## Development
 
-This repository uses [lefthook](https://lefthook.dev/) to run the same checks as CI
-locally, so problems surface before they reach CI.
+This repository uses [lefthook](https://lefthook.dev/) to run the same checks as
+CI locally, so problems surface before they reach CI.
 
 ```sh
 # Install dependencies
