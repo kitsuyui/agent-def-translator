@@ -1,0 +1,31 @@
+name: Security Settings Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly check to detect accidental setting changes
+    - cron: '0 9 * * 1'
+
+jobs:
+  check-secret-scanning-non-provider-patterns:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check secret scanning non-provider patterns
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          status=$(gh api /repos/${{ github.repository }} \
+            --jq '.security_and_analysis.secret_scanning_non_provider_patterns.status')
+          echo "secret_scanning_non_provider_patterns: $status"
+          if [ "$status" != "enabled" ]; then
+            echo "::error::secret_scanning_non_provider_patterns is disabled."
+            echo "Enable it at: https://github.com/${{ github.repository }}/settings/security_analysis"
+            echo "This setting detects generic high-entropy strings and common API key patterns"
+            echo "that are not covered by provider-specific secret scanning patterns."
+            exit 1
+          fi
