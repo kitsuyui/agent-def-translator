@@ -1,15 +1,9 @@
 from __future__ import annotations
 
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover
-    import tomli as tomllib
 
 from agent_def_translator._common import (
     DefinitionError,
@@ -19,6 +13,7 @@ from agent_def_translator._common import (
     _is_string_list,
     _is_yaml_value,
     _load_target_configs,
+    _load_toml,
     _write_artifacts_batch,
     _yaml_lines,
 )
@@ -126,7 +121,7 @@ def load_skill_definition(
     root_dir: Path | None = None,
 ) -> SkillDefinition:
     root = root_dir or path.parent
-    payload = tomllib.loads(path.read_text(encoding="utf-8"))
+    payload = _load_toml(path)
     unknown = sorted(set(payload) - SKILL_ROOT_FIELDS)
     if unknown:
         fields = ", ".join(unknown)

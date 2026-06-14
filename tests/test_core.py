@@ -1159,3 +1159,39 @@ def test_skill_bundle_rejects_oversized_file(
             definitions_dir=tmp_path / "skills",
             output_dir=tmp_path / "out",
         )
+
+
+def test_load_definition_toml_syntax_error_raises_definition_error(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text("this is not valid toml ===\n", encoding="utf-8")
+    with pytest.raises(DefinitionError, match=str(spec)):
+        load_definition(spec)
+
+
+def test_load_mcp_config_definition_toml_syntax_error_raises_definition_error(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text("this is not valid toml ===\n", encoding="utf-8")
+    with pytest.raises(DefinitionError, match=str(spec)):
+        load_mcp_config_definition(spec)
+
+
+def test_load_plugin_definition_toml_syntax_error_raises_definition_error(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text("this is not valid toml ===\n", encoding="utf-8")
+    with pytest.raises(DefinitionError, match=str(spec)):
+        load_plugin_definition(spec)
+
+
+def test_load_skill_definition_toml_syntax_error_raises_definition_error(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text("this is not valid toml ===\n", encoding="utf-8")
+    with pytest.raises(DefinitionError, match=str(spec)):
+        load_skill_definition(spec)

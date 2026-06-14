@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import tempfile
 import warnings
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover
+    import tomli as tomllib
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 LEGACY_TARGET_FIELDS = frozenset({"claude", "codex", "vscode", "copilot"})
@@ -18,6 +24,13 @@ DEPRECATION_REMOVAL_NOTICE = (
 
 class DefinitionError(ValueError):
     """Raised when a definition cannot be translated."""
+
+
+def _load_toml(path: Path) -> dict[str, Any]:
+    try:
+        return tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as e:
+        raise DefinitionError(f"{path}: {e}") from e
 
 
 class Target(str, Enum):
