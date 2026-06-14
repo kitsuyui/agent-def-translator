@@ -308,3 +308,11 @@ def _normalize_claude_value(key: str, value: Any) -> Any:
 def _generated_comment(definition: AgentDefinition) -> str:
     source = _source_comment(definition)
     return f"Generated from {source} by agent-def-translator."
+
+
+# Symmetric aliases matching the naming convention of other resource types:
+# generate_skills / render_skill / check_skill_drift / skill_output_path, etc.
+generate_subagents = generate
+render_subagent = render
+check_subagent_drift = check_drift
+subagent_output_path = output_path
