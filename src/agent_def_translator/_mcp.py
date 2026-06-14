@@ -1,15 +1,9 @@
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover
-    import tomli as tomllib
 
 from agent_def_translator._common import (
     NAME_PATTERN,
@@ -20,6 +14,7 @@ from agent_def_translator._common import (
     _is_string_dict,
     _is_string_list,
     _load_target_configs,
+    _load_toml,
     _write_artifacts_batch,
     _write_toml_table,
 )
@@ -72,7 +67,7 @@ def load_mcp_config_definition(
     root_dir: Path | None = None,
 ) -> McpConfigDefinition:
     root = root_dir or path.parent
-    payload = tomllib.loads(path.read_text(encoding="utf-8"))
+    payload = _load_toml(path)
     unknown = sorted(set(payload) - MCP_ROOT_FIELDS)
     if unknown:
         fields = ", ".join(unknown)

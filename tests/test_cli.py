@@ -382,3 +382,20 @@ def test_cli_plugin_validate_translate_and_diff(tmp_path: Path) -> None:
     manifest.write_text("stale", encoding="utf-8")
 
     assert main(diff_args) == 1
+
+
+def test_cli_toml_syntax_error_exits_with_code_2(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    definitions_dir = tmp_path / "agents"
+    definitions_dir.mkdir()
+    (definitions_dir / "bad.toml").write_text(
+        "this is not valid toml ===\n",
+        encoding="utf-8",
+    )
+    result = main(
+        ["subagent", "validate", "--definitions-dir", str(definitions_dir)],
+    )
+    assert result == 2
+    assert "error:" in capsys.readouterr().err
