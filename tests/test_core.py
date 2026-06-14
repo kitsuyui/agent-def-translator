@@ -1159,3 +1159,49 @@ def test_skill_bundle_rejects_oversized_file(
             definitions_dir=tmp_path / "skills",
             output_dir=tmp_path / "out",
         )
+
+
+def test_yaml_key_safe_and_unsafe() -> None:
+    from agent_def_translator._common import _yaml_key
+
+    # Safe keys: no quoting needed
+    assert _yaml_key("name") == "name"
+    assert _yaml_key("allowed-tools") == "allowed-tools"
+    assert _yaml_key("permission_mode") == "permission_mode"
+    assert _yaml_key("_private") == "_private"
+    assert _yaml_key("v1.0") == "v1.0"
+
+    # Unsafe keys: must be double-quoted
+    assert _yaml_key("foo: bar") == '"foo: bar"'
+    assert _yaml_key("key\ninjection") == '"key\\ninjection"'
+    assert _yaml_key("key#comment") == '"key#comment"'
+    assert _yaml_key("1start") == '"1start"'
+
+
+def test_yaml_key_injection_is_blocked(tmp_path: Path) -> None:
+    """TOML quoted key with ':' must not break YAML frontmatter."""
+    definitions_dir = tmp_path / "agents"
+    definitions_dir.mkdir()
+    spec = definitions_dir / "sample.toml"
+    # TOML allows quoted keys with arbitrary strings; the colon here would
+    # break YAML if the key were embedded without quoting.
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "sample"
+            description = "Sample agent"
+            instructions = "Instructions"
+
+            [targets.claude]
+            "foo: injected" = "value"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    definition = load_definition(spec, root_dir=definitions_dir)
+    output = render(definition, Target.CLAUDE)
+    # The key must appear double-quoted in the YAML output
+    assert '"foo: injected": "value"' in output
+    # The raw unquoted form must not appear as a YAML mapping key
+    assert "\nfoo: injected" not in output

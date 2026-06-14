@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
+_YAML_SAFE_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
 LEGACY_TARGET_FIELDS = frozenset({"claude", "codex", "vscode", "copilot"})
 DEPRECATION_REMOVAL_NOTICE = (
     "scheduled for removal no earlier than agent-def-translator 1.0.0"
@@ -151,17 +152,24 @@ def _render_yaml_scalar(value: Any) -> str:
     raise DefinitionError(msg)
 
 
+def _yaml_key(key: str) -> str:
+    if _YAML_SAFE_KEY_RE.fullmatch(key):
+        return key
+    return json.dumps(key, ensure_ascii=False)
+
+
 def _yaml_lines(key: str, value: Any, indent: int = 0) -> list[str]:
     prefix = " " * indent
+    safe_key = _yaml_key(key)
     if isinstance(value, dict):
-        lines = [f"{prefix}{key}:"]
+        lines = [f"{prefix}{safe_key}:"]
         for child_key, child_value in _sorted_mapping_items(value):
             lines.extend(_yaml_lines(str(child_key), child_value, indent + 2))
         return lines
     if isinstance(value, list):
         if not value:
-            return [f"{prefix}{key}: []"]
-        lines = [f"{prefix}{key}:"]
+            return [f"{prefix}{safe_key}: []"]
+        lines = [f"{prefix}{safe_key}:"]
         for item in value:
             if isinstance(item, dict):
                 lines.append(f"{prefix}  -")
@@ -174,7 +182,7 @@ def _yaml_lines(key: str, value: Any, indent: int = 0) -> list[str]:
             else:
                 lines.append(f"{prefix}  - {_render_yaml_scalar(item)}")
         return lines
-    return [f"{prefix}{key}: {_render_yaml_scalar(value)}"]
+    return [f"{prefix}{safe_key}: {_render_yaml_scalar(value)}"]
 
 
 def _sorted_mapping_items(
