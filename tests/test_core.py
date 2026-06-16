@@ -308,6 +308,36 @@ def test_new_targets_syntax_emits_no_deprecation(
     assert deprecations == []
 
 
+@pytest.mark.parametrize(
+    "tool_key",
+    ["tools", "allowedTools", "disallowedTools"],
+)
+def test_claude_empty_tool_lists_render_as_yaml_lists(
+    tmp_path: Path,
+    tool_key: str,
+) -> None:
+    spec = tmp_path / "empty-tools.toml"
+    spec.write_text(
+        textwrap.dedent(
+            f"""
+            name = "empty-tools"
+            description = "Empty tool list"
+            instructions = "Base instructions"
+
+            [targets.claude]
+            {tool_key} = []
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    rendered = render(load_definition(spec), Target.CLAUDE)
+
+    assert f"{tool_key}: []" in rendered
+    assert f'{tool_key}: ""' not in rendered
+
+
 def test_subagent_output_path_is_publicly_exported(tmp_path: Path) -> None:
     from agent_def_translator import output_path
 

@@ -301,6 +301,8 @@ def _normalize_claude_value(key: str, value: Any) -> Any:
         value,
         list,
     ):
+        if not value:
+            return value
         return ", ".join(str(item) for item in value)
     return value
 
