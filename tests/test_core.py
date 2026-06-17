@@ -1361,3 +1361,70 @@ def test_load_skill_definition_toml_syntax_error_raises_definition_error(
     spec.write_text("this is not valid toml ===\n", encoding="utf-8")
     with pytest.raises(DefinitionError, match=str(spec)):
         load_skill_definition(spec)
+
+
+def test_mcp_json_fragment_merge_rejects_too_many_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _plugin
+
+    monkeypatch.setattr(_plugin, "_MAX_COPY_TREE_FILE_COUNT", 2)
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    for i in range(3):
+        (mcp_dir / f"fragment{i}.json").write_text(
+            '{"mcpServers": {}}', encoding="utf-8",
+        )
+    with pytest.raises(DefinitionError, match="too many MCP fragment files"):
+        _plugin._merge_json_mcp_fragments(mcp_dir)
+
+
+def test_mcp_json_fragment_merge_rejects_oversized_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _plugin
+
+    monkeypatch.setattr(_plugin, "_MAX_COPY_TREE_FILE_BYTES", 10)
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    (mcp_dir / "fragment.json").write_text(
+        '{"mcpServers": {"large": {}}}', encoding="utf-8",
+    )
+    with pytest.raises(DefinitionError, match="too large"):
+        _plugin._merge_json_mcp_fragments(mcp_dir)
+
+
+def test_mcp_toml_fragment_merge_rejects_too_many_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _plugin
+
+    monkeypatch.setattr(_plugin, "_MAX_COPY_TREE_FILE_COUNT", 2)
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    for i in range(3):
+        (mcp_dir / f"fragment{i}.toml").write_text(
+            "[mcp_servers]\n", encoding="utf-8",
+        )
+    with pytest.raises(DefinitionError, match="too many MCP fragment files"):
+        _plugin._merge_codex_mcp_fragments(mcp_dir)
+
+
+def test_mcp_toml_fragment_merge_rejects_oversized_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _plugin
+
+    monkeypatch.setattr(_plugin, "_MAX_COPY_TREE_FILE_BYTES", 10)
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    (mcp_dir / "fragment.toml").write_text(
+        "[mcp_servers.large]\nurl = 'https://example.com/mcp'\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(DefinitionError, match="too large"):
+        _plugin._merge_codex_mcp_fragments(mcp_dir)
