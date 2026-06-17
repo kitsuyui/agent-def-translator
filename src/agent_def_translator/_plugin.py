@@ -20,6 +20,7 @@ from agent_def_translator._common import (
     _is_json_value,
     _is_string_list,
     _load_target_configs,
+    _resolve_relative_path,
     _write_artifacts_batch,
 )
 
@@ -626,7 +627,12 @@ def _plugin_bundle_artifacts(
 
     resources_dir = components.get("resources_dir")
     if isinstance(resources_dir, str) and resources_dir.strip():
-        source_root = definition.root_dir / resources_dir
+        source_root = _resolve_relative_path(
+            base_dir=definition.root_dir,
+            field_name="components.resources_dir",
+            source_path=definition.source_path,
+            value=resources_dir,
+        )
         artifacts.extend(
             _copy_tree_artifacts(
                 target=target,

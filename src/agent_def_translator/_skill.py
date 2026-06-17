@@ -19,6 +19,7 @@ from agent_def_translator._common import (
     _is_string_list,
     _is_yaml_value,
     _load_target_configs,
+    _resolve_relative_path,
     _write_artifacts_batch,
     _yaml_lines,
 )
@@ -337,7 +338,12 @@ def _skill_bundle_dir(
         return candidate if candidate.is_dir() else None
     if not isinstance(source_dir, str) or not source_dir.strip():
         raise DefinitionError(f"{path}: source_dir must be a string")
-    bundle_dir = root_dir / source_dir
+    bundle_dir = _resolve_relative_path(
+        base_dir=root_dir,
+        field_name="source_dir",
+        source_path=path,
+        value=source_dir,
+    )
     if not bundle_dir.is_dir():
         raise DefinitionError(f"{path}: source_dir not found: {bundle_dir}")
     return bundle_dir
