@@ -98,14 +98,16 @@ SKILL_CODEX_FRONTMATTER_FIELDS = {
     "metadata": "metadata",
     "allowed_tools": "allowed-tools",
 }
-SKILL_CODEX_INTERFACE_FIELDS = {
-    "display_name",
-    "short_description",
-    "icon_small",
-    "icon_large",
-    "brand_color",
-    "default_prompt",
-}
+SKILL_CODEX_INTERFACE_FIELDS = frozenset(
+    {
+        "display_name",
+        "short_description",
+        "icon_small",
+        "icon_large",
+        "brand_color",
+        "default_prompt",
+    },
+)
 
 
 @dataclass(frozen=True, slots=True)
