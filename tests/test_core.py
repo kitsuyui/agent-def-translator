@@ -599,6 +599,12 @@ def test_skill_source_dir_rejects_paths_outside_definitions_dir(
         load_skill_definition(spec, root_dir=tmp_path / "skills")
 
 
+def test_skill_codex_interface_fields_are_immutable() -> None:
+    from agent_def_translator import _skill
+
+    assert isinstance(_skill.SKILL_CODEX_INTERFACE_FIELDS, frozenset)
+
+
 def test_generate_skills_and_drift_check(tmp_path: Path) -> None:
     write_skill_sample(tmp_path)
     output_dir = tmp_path / "generated"
