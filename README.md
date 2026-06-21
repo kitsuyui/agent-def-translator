@@ -132,7 +132,7 @@ uvx agent-def-translator plugin translate \
 ## Documentation
 
 - [CLI usage](docs/cli.md): command reference and common workflows.
-- [Definition format](docs/definition-format.md): TOML fields, target tables,
+- [Subagent format](docs/subagent-format.md): TOML fields, target tables,
   prompt composition, and output paths.
 - [MCP config format](docs/mcp-config-format.md): TOML fields and generated MCP
   config fragments for Claude Code, Codex, and GitHub Copilot.
