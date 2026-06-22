@@ -1,15 +1,9 @@
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover
-    import tomli as tomllib
 
 from agent_def_translator._common import (
     NAME_PATTERN,
@@ -20,6 +14,7 @@ from agent_def_translator._common import (
     _is_json_value,
     _is_string_list,
     _load_target_configs,
+    _load_toml,
     _write_artifacts_batch,
 )
 
@@ -111,7 +106,7 @@ def load_plugin_definition(
     root_dir: Path | None = None,
 ) -> PluginDefinition:
     root = root_dir or path.parent
-    payload = tomllib.loads(path.read_text(encoding="utf-8"))
+    payload = _load_toml(path)
     unknown = sorted(set(payload) - PLUGIN_ROOT_FIELDS)
     if unknown:
         fields = ", ".join(unknown)
@@ -728,7 +723,7 @@ def _merge_json_mcp_fragments(source_root: Path) -> dict[str, Any]:
         try:
             fragment = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
-            raise json.JSONDecodeError(f"{path}: {e.msg}", e.doc, e.pos) from e
+            raise DefinitionError(f"{path}: {e}") from e
         servers = fragment.get("mcpServers")
         if not isinstance(servers, dict):
             continue
@@ -739,10 +734,7 @@ def _merge_json_mcp_fragments(source_root: Path) -> dict[str, Any]:
 def _merge_codex_mcp_fragments(source_root: Path) -> dict[str, Any]:
     payload: dict[str, Any] = {"mcpServers": {}}
     for path in sorted(source_root.glob("*.toml")):
-        try:
-            fragment = tomllib.loads(path.read_text(encoding="utf-8"))
-        except tomllib.TOMLDecodeError as e:
-            raise tomllib.TOMLDecodeError(f"{path}: {e}") from e
+        fragment = _load_toml(path)
         servers = fragment.get("mcp_servers")
         if not isinstance(servers, dict):
             continue
