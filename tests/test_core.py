@@ -204,7 +204,10 @@ def test_validate_definitions_renders_prompt_append_files(
     assert [definition.name for definition in definitions] == ["sample"]
 
 
-def test_legacy_target_tables_are_accepted(tmp_path: Path) -> None:
+def test_legacy_target_tables_are_accepted(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     spec = tmp_path / "legacy.toml"
     spec.write_text(
         textwrap.dedent(
@@ -221,13 +224,12 @@ def test_legacy_target_tables_are_accepted(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.warns(DeprecationWarning, match=r"\[vscode\]") as warnings:
-        definition = load_definition(spec)
+    definition = load_definition(spec)
 
     assert definition.targets[Target.COPILOT]["tools"] == ["search"]
-    assert "no earlier than agent-def-translator 1.0.0" in str(
-        warnings[0].message,
-    )
+    captured = capsys.readouterr()
+    assert "[vscode]" in captured.err
+    assert "no earlier than agent-def-translator 1.0.0" in captured.err
 
 
 def test_legacy_and_targets_conflict_is_rejected(tmp_path: Path) -> None:
@@ -280,7 +282,7 @@ def test_legacy_alias_and_targets_conflict_is_rejected(tmp_path: Path) -> None:
 
 def test_new_targets_syntax_emits_no_deprecation(
     tmp_path: Path,
-    recwarn: pytest.WarningsRecorder,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     spec = tmp_path / "modern.toml"
     spec.write_text(
@@ -300,12 +302,8 @@ def test_new_targets_syntax_emits_no_deprecation(
 
     load_definition(spec)
 
-    deprecations = [
-        warning
-        for warning in recwarn.list
-        if issubclass(warning.category, DeprecationWarning)
-    ]
-    assert deprecations == []
+    captured = capsys.readouterr()
+    assert "deprecated" not in captured.err
 
 
 def test_subagent_output_path_is_publicly_exported(tmp_path: Path) -> None:

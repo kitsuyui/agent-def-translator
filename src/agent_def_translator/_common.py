@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import tempfile
-import warnings
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -88,14 +88,11 @@ def _load_target_configs(
 
     if legacy_used:
         joined = ", ".join(f"[{key}]" for key in legacy_used)
-        warnings.warn(
-            (
-                f"{path}: legacy top-level target tables ({joined}) are "
-                f"deprecated and {DEPRECATION_REMOVAL_NOTICE}; "
-                "use [targets.<target>] instead."
-            ),
-            DeprecationWarning,
-            stacklevel=2,
+        print(
+            f"Warning: {path}: legacy top-level target tables ({joined}) are "
+            f"deprecated and {DEPRECATION_REMOVAL_NOTICE}; "
+            "use [targets.<target>] instead.",
+            file=sys.stderr,
         )
 
     return configs
