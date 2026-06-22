@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import textwrap
 from pathlib import Path
+from typing import Literal, cast
 
 import pytest
 
+import agent_def_translator._common as common
 from agent_def_translator import (
     DefinitionError,
     McpConfigDefinition,
@@ -33,6 +35,7 @@ from agent_def_translator import (
     validate_plugin_definitions,
     validate_skill_definitions,
 )
+from agent_def_translator._common import GeneratedArtifact
 
 
 def write_sample(root: Path) -> Path:
@@ -192,6 +195,135 @@ def test_generate_and_drift_check(tmp_path: Path) -> None:
         definitions_dir=tmp_path / "agents",
         output_dir=output_dir,
     ) == [generated]
+
+
+def test_write_artifact_cleans_tmp_file_on_baseexception(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created: list[Path] = []
+
+    class ArtificialInterrupt(BaseException):
+        pass
+
+    class InterruptingTempFile:
+        def __init__(
+            self,
+            *_args: object,
+            **_kwargs: object,
+        ) -> None:
+            directory = cast(str | Path, _kwargs["dir"])
+            suffix = cast(str, _kwargs["suffix"])
+            self.path = Path(directory) / f"artifact{suffix}"
+            self.path.write_bytes(b"")
+            self.name = str(self.path)
+            created.append(self.path)
+
+        def __enter__(self) -> InterruptingTempFile:
+            return self
+
+        def __exit__(
+            self,
+            _exc_type: type[BaseException] | None,
+            _exc: BaseException | None,
+            _traceback: object,
+        ) -> Literal[False]:
+            return False
+
+        def write(self, _content: bytes) -> int:
+            raise ArtificialInterrupt
+
+    monkeypatch.setattr(
+        common.tempfile,
+        "NamedTemporaryFile",
+        InterruptingTempFile,
+    )
+
+    artifact = GeneratedArtifact(
+        target=Target.CODEX,
+        source_path=tmp_path / "source.toml",
+        output_path=tmp_path / "generated.toml",
+        content="content",
+    )
+
+    with pytest.raises(ArtificialInterrupt):
+        common._write_artifact(artifact)
+
+    assert created == [tmp_path / "artifact.tmp"]
+    assert not created[0].exists()
+    assert not artifact.output_path.exists()
+
+
+def test_write_artifacts_batch_cleans_tmp_files_on_baseexception(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created: list[Path] = []
+
+    class ArtificialInterrupt(BaseException):
+        pass
+
+    class InterruptingSecondTempFile:
+        def __init__(
+            self,
+            *_args: object,
+            **_kwargs: object,
+        ) -> None:
+            directory = cast(str | Path, _kwargs["dir"])
+            suffix = cast(str, _kwargs["suffix"])
+            self.index = len(created)
+            self.path = Path(directory) / f"artifact-{self.index}{suffix}"
+            self.path.write_bytes(b"")
+            self.name = str(self.path)
+            created.append(self.path)
+
+        def __enter__(self) -> InterruptingSecondTempFile:
+            return self
+
+        def __exit__(
+            self,
+            _exc_type: type[BaseException] | None,
+            _exc: BaseException | None,
+            _traceback: object,
+        ) -> Literal[False]:
+            return False
+
+        def write(self, content: bytes) -> int:
+            if self.index == 1:
+                raise ArtificialInterrupt
+            self.path.write_bytes(content)
+            return len(content)
+
+    monkeypatch.setattr(
+        common.tempfile,
+        "NamedTemporaryFile",
+        InterruptingSecondTempFile,
+    )
+
+    artifacts = [
+        GeneratedArtifact(
+            target=Target.CODEX,
+            source_path=tmp_path / "source-one.toml",
+            output_path=tmp_path / "generated-one.toml",
+            content="one",
+        ),
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "source-two.toml",
+            output_path=tmp_path / "generated-two.md",
+            content="two",
+        ),
+    ]
+
+    with pytest.raises(ArtificialInterrupt):
+        common._write_artifacts_batch(artifacts)
+
+    assert created == [
+        tmp_path / "artifact-0.tmp",
+        tmp_path / "artifact-1.tmp",
+    ]
+    assert all(not path.exists() for path in created)
+    assert all(not artifact.output_path.exists() for artifact in artifacts)
 
 
 def test_validate_definitions_renders_prompt_append_files(

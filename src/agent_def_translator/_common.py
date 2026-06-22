@@ -274,6 +274,10 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
             f" source={artifact.source_path}): {exc}"
         )
         raise OSError(msg) from exc
+    except BaseException:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+        raise
     _chmod_artifact(artifact)
 
 
@@ -309,7 +313,7 @@ def _write_artifacts_batch(artifacts: list[GeneratedArtifact]) -> None:
                 tmp.replace(artifact.output_path)
                 tmp_paths[i] = None
             _chmod_artifact(artifact)
-    except OSError:
+    except BaseException:
         for tmp in tmp_paths:
             if tmp is not None:
                 tmp.unlink(missing_ok=True)
