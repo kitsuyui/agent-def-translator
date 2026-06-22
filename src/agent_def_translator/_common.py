@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import tempfile
-import warnings
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover
+    import tomli as tomllib
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 _YAML_SAFE_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
@@ -19,6 +24,13 @@ DEPRECATION_REMOVAL_NOTICE = (
 
 class DefinitionError(ValueError):
     """Raised when a definition cannot be translated."""
+
+
+def _load_toml(path: Path) -> dict[str, Any]:
+    try:
+        return tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as e:
+        raise DefinitionError(f"{path}: {e}") from e
 
 
 class Target(str, Enum):
@@ -89,14 +101,11 @@ def _load_target_configs(
 
     if legacy_used:
         joined = ", ".join(f"[{key}]" for key in legacy_used)
-        warnings.warn(
-            (
-                f"{path}: legacy top-level target tables ({joined}) are "
-                f"deprecated and {DEPRECATION_REMOVAL_NOTICE}; "
-                "use [targets.<target>] instead."
-            ),
-            DeprecationWarning,
-            stacklevel=2,
+        print(
+            f"Warning: {path}: legacy top-level target tables ({joined}) are "
+            f"deprecated and {DEPRECATION_REMOVAL_NOTICE}; "
+            "use [targets.<target>] instead.",
+            file=sys.stderr,
         )
 
     return configs
@@ -273,6 +282,10 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
             f" source={artifact.source_path}): {exc}"
         )
         raise OSError(msg) from exc
+    except BaseException:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+        raise
     _chmod_artifact(artifact)
 
 
@@ -308,7 +321,7 @@ def _write_artifacts_batch(artifacts: list[GeneratedArtifact]) -> None:
                 tmp.replace(artifact.output_path)
                 tmp_paths[i] = None
             _chmod_artifact(artifact)
-    except OSError:
+    except BaseException:
         for tmp in tmp_paths:
             if tmp is not None:
                 tmp.unlink(missing_ok=True)

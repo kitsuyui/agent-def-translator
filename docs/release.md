@@ -37,7 +37,10 @@ Before creating a GitHub Release:
    ```
 
 4. Review user-facing changes since the previous tag and draft release notes.
-5. Create either a prerelease or a final release from GitHub Releases with a tag
+5. Update `CHANGELOG.md`: add a `## [X.Y.Z] - YYYY-MM-DD` section under
+   `## [Unreleased]`, move the relevant entries in, and update the comparison
+   links at the bottom of the file.
+6. Create either a prerelease or a final release from GitHub Releases with a tag
    that matches the version policy.
 
 The packaging workflow builds from the release event. It publishes prereleases

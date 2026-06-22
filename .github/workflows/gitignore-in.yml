@@ -5,7 +5,21 @@ on:
     - cron: '0 0 * * *'
 permissions:
   contents: write
-  pull-requests: write
 jobs:
   update-gitignore:
-    uses: kitsuyui/gh-actions-workflows/.github/workflows/gitignore-in.yml@13bcb6950cf9b54297b7e8f88823dcd2c45426b2 # main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: main
+      - name: Generate .gitignore from .gitignore.in
+        uses: gitignore-in/gh-action@98ab8a7225c88b81167bfef156dbad83c554aaf4 # v0.2.3
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet .gitignore || {
+            git add .gitignore
+            git commit -m "chore: update .gitignore from template"
+            git push
+          }

@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import textwrap
 from pathlib import Path
+from typing import Literal, cast
 
 import pytest
 
+import agent_def_translator._common as common
 from agent_def_translator import (
     DefinitionError,
     McpConfigDefinition,
@@ -33,6 +35,7 @@ from agent_def_translator import (
     validate_plugin_definitions,
     validate_skill_definitions,
 )
+from agent_def_translator._common import GeneratedArtifact
 
 
 def write_sample(root: Path) -> Path:
@@ -194,6 +197,135 @@ def test_generate_and_drift_check(tmp_path: Path) -> None:
     ) == [generated]
 
 
+def test_write_artifact_cleans_tmp_file_on_baseexception(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created: list[Path] = []
+
+    class ArtificialInterrupt(BaseException):
+        pass
+
+    class InterruptingTempFile:
+        def __init__(
+            self,
+            *_args: object,
+            **_kwargs: object,
+        ) -> None:
+            directory = cast(str | Path, _kwargs["dir"])
+            suffix = cast(str, _kwargs["suffix"])
+            self.path = Path(directory) / f"artifact{suffix}"
+            self.path.write_bytes(b"")
+            self.name = str(self.path)
+            created.append(self.path)
+
+        def __enter__(self) -> InterruptingTempFile:
+            return self
+
+        def __exit__(
+            self,
+            _exc_type: type[BaseException] | None,
+            _exc: BaseException | None,
+            _traceback: object,
+        ) -> Literal[False]:
+            return False
+
+        def write(self, _content: bytes) -> int:
+            raise ArtificialInterrupt
+
+    monkeypatch.setattr(
+        common.tempfile,
+        "NamedTemporaryFile",
+        InterruptingTempFile,
+    )
+
+    artifact = GeneratedArtifact(
+        target=Target.CODEX,
+        source_path=tmp_path / "source.toml",
+        output_path=tmp_path / "generated.toml",
+        content="content",
+    )
+
+    with pytest.raises(ArtificialInterrupt):
+        common._write_artifact(artifact)
+
+    assert created == [tmp_path / "artifact.tmp"]
+    assert not created[0].exists()
+    assert not artifact.output_path.exists()
+
+
+def test_write_artifacts_batch_cleans_tmp_files_on_baseexception(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created: list[Path] = []
+
+    class ArtificialInterrupt(BaseException):
+        pass
+
+    class InterruptingSecondTempFile:
+        def __init__(
+            self,
+            *_args: object,
+            **_kwargs: object,
+        ) -> None:
+            directory = cast(str | Path, _kwargs["dir"])
+            suffix = cast(str, _kwargs["suffix"])
+            self.index = len(created)
+            self.path = Path(directory) / f"artifact-{self.index}{suffix}"
+            self.path.write_bytes(b"")
+            self.name = str(self.path)
+            created.append(self.path)
+
+        def __enter__(self) -> InterruptingSecondTempFile:
+            return self
+
+        def __exit__(
+            self,
+            _exc_type: type[BaseException] | None,
+            _exc: BaseException | None,
+            _traceback: object,
+        ) -> Literal[False]:
+            return False
+
+        def write(self, content: bytes) -> int:
+            if self.index == 1:
+                raise ArtificialInterrupt
+            self.path.write_bytes(content)
+            return len(content)
+
+    monkeypatch.setattr(
+        common.tempfile,
+        "NamedTemporaryFile",
+        InterruptingSecondTempFile,
+    )
+
+    artifacts = [
+        GeneratedArtifact(
+            target=Target.CODEX,
+            source_path=tmp_path / "source-one.toml",
+            output_path=tmp_path / "generated-one.toml",
+            content="one",
+        ),
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "source-two.toml",
+            output_path=tmp_path / "generated-two.md",
+            content="two",
+        ),
+    ]
+
+    with pytest.raises(ArtificialInterrupt):
+        common._write_artifacts_batch(artifacts)
+
+    assert created == [
+        tmp_path / "artifact-0.tmp",
+        tmp_path / "artifact-1.tmp",
+    ]
+    assert all(not path.exists() for path in created)
+    assert all(not artifact.output_path.exists() for artifact in artifacts)
+
+
 def test_validate_definitions_renders_prompt_append_files(
     tmp_path: Path,
 ) -> None:
@@ -204,7 +336,10 @@ def test_validate_definitions_renders_prompt_append_files(
     assert [definition.name for definition in definitions] == ["sample"]
 
 
-def test_legacy_target_tables_are_accepted(tmp_path: Path) -> None:
+def test_legacy_target_tables_are_accepted(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     spec = tmp_path / "legacy.toml"
     spec.write_text(
         textwrap.dedent(
@@ -221,13 +356,12 @@ def test_legacy_target_tables_are_accepted(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    with pytest.warns(DeprecationWarning, match=r"\[vscode\]") as warnings:
-        definition = load_definition(spec)
+    definition = load_definition(spec)
 
     assert definition.targets[Target.COPILOT]["tools"] == ["search"]
-    assert "no earlier than agent-def-translator 1.0.0" in str(
-        warnings[0].message,
-    )
+    captured = capsys.readouterr()
+    assert "[vscode]" in captured.err
+    assert "no earlier than agent-def-translator 1.0.0" in captured.err
 
 
 def test_legacy_and_targets_conflict_is_rejected(tmp_path: Path) -> None:
@@ -280,7 +414,7 @@ def test_legacy_alias_and_targets_conflict_is_rejected(tmp_path: Path) -> None:
 
 def test_new_targets_syntax_emits_no_deprecation(
     tmp_path: Path,
-    recwarn: pytest.WarningsRecorder,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     spec = tmp_path / "modern.toml"
     spec.write_text(
@@ -300,12 +434,38 @@ def test_new_targets_syntax_emits_no_deprecation(
 
     load_definition(spec)
 
-    deprecations = [
-        warning
-        for warning in recwarn.list
-        if issubclass(warning.category, DeprecationWarning)
-    ]
-    assert deprecations == []
+    captured = capsys.readouterr()
+    assert "deprecated" not in captured.err
+
+
+@pytest.mark.parametrize(
+    "tool_key",
+    ["tools", "allowedTools", "disallowedTools"],
+)
+def test_claude_empty_tool_lists_render_as_yaml_lists(
+    tmp_path: Path,
+    tool_key: str,
+) -> None:
+    spec = tmp_path / "empty-tools.toml"
+    spec.write_text(
+        textwrap.dedent(
+            f"""
+            name = "empty-tools"
+            description = "Empty tool list"
+            instructions = "Base instructions"
+
+            [targets.claude]
+            {tool_key} = []
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    rendered = render(load_definition(spec), Target.CLAUDE)
+
+    assert f"{tool_key}: []" in rendered
+    assert f'{tool_key}: ""' not in rendered
 
 
 def test_subagent_output_path_is_publicly_exported(tmp_path: Path) -> None:
@@ -522,6 +682,12 @@ def test_render_skill_all_targets(tmp_path: Path) -> None:
     assert "display_name" not in codex
     assert "user-invocable: false" in copilot
     assert "Reply with one short greeting." in copilot
+
+
+def test_skill_codex_interface_fields_are_immutable() -> None:
+    from agent_def_translator import _skill
+
+    assert isinstance(_skill.SKILL_CODEX_INTERFACE_FIELDS, frozenset)
 
 
 def test_generate_skills_and_drift_check(tmp_path: Path) -> None:
@@ -1205,3 +1371,39 @@ def test_yaml_key_injection_is_blocked(tmp_path: Path) -> None:
     assert '"foo: injected": "value"' in output
     # The raw unquoted form must not appear as a YAML mapping key
     assert "\nfoo: injected" not in output
+
+
+def test_load_definition_toml_syntax_error_raises_definition_error(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text("this is not valid toml ===\n", encoding="utf-8")
+    with pytest.raises(DefinitionError, match=str(spec)):
+        load_definition(spec)
+
+
+def test_load_mcp_config_definition_toml_syntax_error_raises_definition_error(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text("this is not valid toml ===\n", encoding="utf-8")
+    with pytest.raises(DefinitionError, match=str(spec)):
+        load_mcp_config_definition(spec)
+
+
+def test_load_plugin_definition_toml_syntax_error_raises_definition_error(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text("this is not valid toml ===\n", encoding="utf-8")
+    with pytest.raises(DefinitionError, match=str(spec)):
+        load_plugin_definition(spec)
+
+
+def test_load_skill_definition_toml_syntax_error_raises_definition_error(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text("this is not valid toml ===\n", encoding="utf-8")
+    with pytest.raises(DefinitionError, match=str(spec)):
+        load_skill_definition(spec)
