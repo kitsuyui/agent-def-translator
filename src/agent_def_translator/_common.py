@@ -17,6 +17,9 @@ else:  # pragma: no cover
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 _YAML_SAFE_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
 LEGACY_TARGET_FIELDS = frozenset({"claude", "codex", "vscode", "copilot"})
+
+MAX_BUNDLE_FILE_COUNT = 1000
+MAX_BUNDLE_FILE_BYTES = 10 * 1024 * 1024
 DEPRECATION_REMOVAL_NOTICE = (
     "scheduled for removal no earlier than agent-def-translator 1.0.0"
 )

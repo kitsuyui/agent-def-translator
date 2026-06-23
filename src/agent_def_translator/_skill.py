@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from agent_def_translator._common import (
+    MAX_BUNDLE_FILE_BYTES,
+    MAX_BUNDLE_FILE_COUNT,
     DefinitionError,
     GeneratedArtifact,
     Target,
@@ -19,8 +21,6 @@ from agent_def_translator._common import (
 )
 
 SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
-_MAX_BUNDLE_FILE_COUNT = 1000
-_MAX_BUNDLE_FILE_BYTES = 10 * 1024 * 1024
 SKILL_ROOT_FIELDS = frozenset(
     {
         "name",
@@ -355,16 +355,16 @@ def _skill_bundle_artifacts(
         if not path.is_file():
             continue
         file_count += 1
-        if file_count > _MAX_BUNDLE_FILE_COUNT:
+        if file_count > MAX_BUNDLE_FILE_COUNT:
             raise DefinitionError(
                 f"{definition.bundle_dir}: bundle has too many files"
-                f" (max {_MAX_BUNDLE_FILE_COUNT})",
+                f" (max {MAX_BUNDLE_FILE_COUNT})",
             )
         file_size = path.stat().st_size
-        if file_size > _MAX_BUNDLE_FILE_BYTES:
+        if file_size > MAX_BUNDLE_FILE_BYTES:
             raise DefinitionError(
                 f"{path}: bundle file too large"
-                f" ({file_size} bytes, max {_MAX_BUNDLE_FILE_BYTES})",
+                f" ({file_size} bytes, max {MAX_BUNDLE_FILE_BYTES})",
             )
         relative_path = path.relative_to(definition.bundle_dir)
         if relative_path == Path("SKILL.md"):
