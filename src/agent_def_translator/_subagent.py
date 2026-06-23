@@ -1,14 +1,8 @@
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover
-    import tomli as tomllib
 
 from agent_def_translator._common import (
     LEGACY_TARGET_FIELDS,
@@ -18,6 +12,7 @@ from agent_def_translator._common import (
     Target,
     _artifact_has_drift,
     _load_target_configs,
+    _load_toml,
     _resolve_relative_path,
     _write_artifacts_batch,
     _write_toml_table,
@@ -46,7 +41,7 @@ def load_definition(
     root_dir: Path | None = None,
 ) -> AgentDefinition:
     root = root_dir or path.parent
-    payload = tomllib.loads(path.read_text(encoding="utf-8"))
+    payload = _load_toml(path)
     unknown = sorted(set(payload) - ROOT_FIELDS - LEGACY_TARGET_FIELDS)
     if unknown:
         fields = ", ".join(unknown)
@@ -308,6 +303,8 @@ def _normalize_claude_value(key: str, value: Any) -> Any:
         value,
         list,
     ):
+        if not value:
+            return value
         return ", ".join(str(item) for item in value)
     return value
 
@@ -315,3 +312,11 @@ def _normalize_claude_value(key: str, value: Any) -> Any:
 def _generated_comment(definition: AgentDefinition) -> str:
     source = _source_comment(definition)
     return f"Generated from {source} by agent-def-translator."
+
+
+# Symmetric aliases matching the naming convention of other resource types:
+# generate_skills / render_skill / check_skill_drift / skill_output_path, etc.
+generate_subagents = generate
+render_subagent = render
+check_subagent_drift = check_drift
+subagent_output_path = output_path

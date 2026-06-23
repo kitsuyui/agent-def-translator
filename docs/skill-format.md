@@ -64,6 +64,10 @@ The TOML definition uses snake_case names. Generated `SKILL.md` frontmatter uses
 platform-facing hyphenated names such as `allowed-tools`,
 `user-invocable`, and `disable-model-invocation`.
 
+`disable_model_invocation = true` prevents model-driven skill invocation. Do not
+combine it with `allow_implicit_invocation = true` in Codex metadata, because
+implicit invocation cannot be enabled when model invocation is disabled.
+
 ## Target Tables
 
 Target-specific fields live under `[targets.<target>]`.
