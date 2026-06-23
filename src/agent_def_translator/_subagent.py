@@ -13,6 +13,7 @@ from agent_def_translator._common import (
     _artifact_has_drift,
     _load_target_configs,
     _load_toml,
+    _resolve_relative_path,
     _write_artifacts_batch,
     _write_toml_table,
     _yaml_lines,
@@ -196,7 +197,13 @@ def _compose_prompt(definition: AgentDefinition, target: Target) -> str:
         override if override is not None else definition.instructions
     ).strip()
     if append_file is not None:
-        file_path = (definition.root_dir / append_file).resolve()
+        file_path = _resolve_relative_path(
+            base_dir=definition.root_dir,
+            containment_dir=definition.root_dir.parent,
+            field_name="prompt_append_file",
+            source_path=definition.source_path,
+            value=append_file,
+        )
         try:
             append = file_path.read_text(encoding="utf-8")
         except FileNotFoundError as exc:

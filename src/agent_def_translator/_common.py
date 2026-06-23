@@ -6,7 +6,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 if sys.version_info >= (3, 11):
@@ -127,6 +127,25 @@ def _is_string_list(value: Any) -> bool:
     return isinstance(value, list) and all(
         isinstance(item, str) for item in value
     )
+
+
+def _resolve_relative_path(
+    *,
+    base_dir: Path,
+    field_name: str,
+    source_path: Path,
+    value: str,
+    containment_dir: Path | None = None,
+) -> Path:
+    if Path(value).is_absolute() or PureWindowsPath(value).is_absolute():
+        msg = f"{source_path}: {field_name} must be a relative path"
+        raise DefinitionError(msg)
+    resolved = (base_dir / value).resolve()
+    root = (containment_dir or base_dir).resolve()
+    if resolved != root and root not in resolved.parents:
+        msg = f"{source_path}: {field_name} must stay within {root}"
+        raise DefinitionError(msg)
+    return resolved
 
 
 def _is_string_dict(value: Any) -> bool:
