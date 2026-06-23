@@ -719,7 +719,20 @@ def _plugin_mcp_artifact(
 
 def _merge_json_mcp_fragments(source_root: Path) -> dict[str, Any]:
     payload: dict[str, Any] = {"mcpServers": {}}
+    file_count = 0
     for path in sorted(source_root.glob("*.json")):
+        file_count += 1
+        if file_count > _MAX_COPY_TREE_FILE_COUNT:
+            raise DefinitionError(
+                f"{source_root}: too many MCP fragment files"
+                f" (max {_MAX_COPY_TREE_FILE_COUNT})",
+            )
+        file_size = path.stat().st_size
+        if file_size > _MAX_COPY_TREE_FILE_BYTES:
+            raise DefinitionError(
+                f"{path}: MCP fragment file too large"
+                f" ({file_size} bytes, max {_MAX_COPY_TREE_FILE_BYTES})",
+            )
         try:
             fragment = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
@@ -733,7 +746,20 @@ def _merge_json_mcp_fragments(source_root: Path) -> dict[str, Any]:
 
 def _merge_codex_mcp_fragments(source_root: Path) -> dict[str, Any]:
     payload: dict[str, Any] = {"mcpServers": {}}
+    file_count = 0
     for path in sorted(source_root.glob("*.toml")):
+        file_count += 1
+        if file_count > _MAX_COPY_TREE_FILE_COUNT:
+            raise DefinitionError(
+                f"{source_root}: too many MCP fragment files"
+                f" (max {_MAX_COPY_TREE_FILE_COUNT})",
+            )
+        file_size = path.stat().st_size
+        if file_size > _MAX_COPY_TREE_FILE_BYTES:
+            raise DefinitionError(
+                f"{path}: MCP fragment file too large"
+                f" ({file_size} bytes, max {_MAX_COPY_TREE_FILE_BYTES})",
+            )
         fragment = _load_toml(path)
         servers = fragment.get("mcp_servers")
         if not isinstance(servers, dict):
