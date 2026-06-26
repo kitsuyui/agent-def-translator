@@ -157,6 +157,16 @@ authentication = "ON_INSTALL"
 category = "Productivity"
 ```
 
+When `[marketplace]` is omitted or individual fields are missing, the
+translator still writes `codex/marketplace.json` and fills in these defaults:
+
+- `name` <- `<plugin name>-local`
+- `display_name` <- `<plugin name> Local Plugins`
+- `source_path` <- `./plugins/<plugin name>`
+- `installation` <- `"AVAILABLE"`
+- `authentication` <- `"ON_INSTALL"`
+- `category` <- `"Productivity"`
+
 ## Target Overrides
 
 Use `[targets.<target>]` to override metadata or disable a target:
