@@ -1401,6 +1401,52 @@ def test_write_artifacts_batch_chmod_failure_leaves_no_final_paths(
         )
 
 
+def test_yaml_key_safe_and_unsafe() -> None:
+    from agent_def_translator._common import _yaml_key
+
+    # Safe keys: no quoting needed
+    assert _yaml_key("name") == "name"
+    assert _yaml_key("allowed-tools") == "allowed-tools"
+    assert _yaml_key("permission_mode") == "permission_mode"
+    assert _yaml_key("_private") == "_private"
+    assert _yaml_key("v1.0") == "v1.0"
+
+    # Unsafe keys: must be double-quoted
+    assert _yaml_key("foo: bar") == '"foo: bar"'
+    assert _yaml_key("key\ninjection") == '"key\\ninjection"'
+    assert _yaml_key("key#comment") == '"key#comment"'
+    assert _yaml_key("1start") == '"1start"'
+
+
+def test_yaml_key_injection_is_blocked(tmp_path: Path) -> None:
+    """TOML quoted key with ':' must not break YAML frontmatter."""
+    definitions_dir = tmp_path / "agents"
+    definitions_dir.mkdir()
+    spec = definitions_dir / "sample.toml"
+    # TOML allows quoted keys with arbitrary strings; the colon here would
+    # break YAML if the key were embedded without quoting.
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "sample"
+            description = "Sample agent"
+            instructions = "Instructions"
+
+            [targets.claude]
+            "foo: injected" = "value"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    definition = load_definition(spec, root_dir=definitions_dir)
+    output = render(definition, Target.CLAUDE)
+    # The key must appear double-quoted in the YAML output
+    assert '"foo: injected": "value"' in output
+    # The raw unquoted form must not appear as a YAML mapping key
+    assert "\nfoo: injected" not in output
+
+
 def test_load_definition_toml_syntax_error_raises_definition_error(
     tmp_path: Path,
 ) -> None:
@@ -1435,3 +1481,70 @@ def test_load_skill_definition_toml_syntax_error_raises_definition_error(
     spec.write_text("this is not valid toml ===\n", encoding="utf-8")
     with pytest.raises(DefinitionError, match=str(spec)):
         load_skill_definition(spec)
+
+
+def test_mcp_json_fragment_merge_rejects_too_many_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _plugin
+
+    monkeypatch.setattr(_plugin, "_MAX_COPY_TREE_FILE_COUNT", 2)
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    for i in range(3):
+        (mcp_dir / f"fragment{i}.json").write_text(
+            '{"mcpServers": {}}', encoding="utf-8",
+        )
+    with pytest.raises(DefinitionError, match="too many MCP fragment files"):
+        _plugin._merge_json_mcp_fragments(mcp_dir)
+
+
+def test_mcp_json_fragment_merge_rejects_oversized_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _plugin
+
+    monkeypatch.setattr(_plugin, "_MAX_COPY_TREE_FILE_BYTES", 10)
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    (mcp_dir / "fragment.json").write_text(
+        '{"mcpServers": {"large": {}}}', encoding="utf-8",
+    )
+    with pytest.raises(DefinitionError, match="too large"):
+        _plugin._merge_json_mcp_fragments(mcp_dir)
+
+
+def test_mcp_toml_fragment_merge_rejects_too_many_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _plugin
+
+    monkeypatch.setattr(_plugin, "_MAX_COPY_TREE_FILE_COUNT", 2)
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    for i in range(3):
+        (mcp_dir / f"fragment{i}.toml").write_text(
+            "[mcp_servers]\n", encoding="utf-8",
+        )
+    with pytest.raises(DefinitionError, match="too many MCP fragment files"):
+        _plugin._merge_codex_mcp_fragments(mcp_dir)
+
+
+def test_mcp_toml_fragment_merge_rejects_oversized_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _plugin
+
+    monkeypatch.setattr(_plugin, "_MAX_COPY_TREE_FILE_BYTES", 10)
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    (mcp_dir / "fragment.toml").write_text(
+        "[mcp_servers.large]\nurl = 'https://example.com/mcp'\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(DefinitionError, match="too large"):
+        _plugin._merge_codex_mcp_fragments(mcp_dir)
