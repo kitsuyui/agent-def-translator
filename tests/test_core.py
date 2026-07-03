@@ -1415,7 +1415,7 @@ def test_skill_bundle_rejects_too_many_files(
 ) -> None:
     from agent_def_translator import _skill
 
-    monkeypatch.setattr(_skill, "_MAX_BUNDLE_FILE_COUNT", 2)
+    monkeypatch.setattr(_skill, "MAX_BUNDLE_FILE_COUNT", 2)
     write_skill_sample(tmp_path)
     # The sample bundle already has 5 files; with limit=2 it should reject.
     with pytest.raises(DefinitionError, match="too many files"):
@@ -1431,7 +1431,7 @@ def test_skill_bundle_rejects_oversized_file(
 ) -> None:
     from agent_def_translator import _skill
 
-    monkeypatch.setattr(_skill, "_MAX_BUNDLE_FILE_BYTES", 10)
+    monkeypatch.setattr(_skill, "MAX_BUNDLE_FILE_BYTES", 10)
     write_skill_sample(tmp_path)
     # The sample bundle contains files larger than 10 bytes.
     with pytest.raises(DefinitionError, match="too large"):

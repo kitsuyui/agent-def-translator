@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from agent_def_translator._common import (
+    MAX_BUNDLE_FILE_BYTES,
+    MAX_BUNDLE_FILE_COUNT,
     NAME_PATTERN,
     DefinitionError,
     GeneratedArtifact,
@@ -18,9 +20,6 @@ from agent_def_translator._common import (
     _resolve_relative_path,
     _write_artifacts_batch,
 )
-
-_MAX_COPY_TREE_FILE_COUNT = 1000
-_MAX_COPY_TREE_FILE_BYTES = 10 * 1024 * 1024
 
 PLUGIN_ROOT_FIELDS = frozenset(
     {
@@ -665,16 +664,16 @@ def _copy_tree_artifacts(
         if not path.is_file():
             continue
         file_count += 1
-        if file_count > _MAX_COPY_TREE_FILE_COUNT:
+        if file_count > MAX_BUNDLE_FILE_COUNT:
             raise DefinitionError(
                 f"{source_root}: directory has too many files"
-                f" (max {_MAX_COPY_TREE_FILE_COUNT})",
+                f" (max {MAX_BUNDLE_FILE_COUNT})",
             )
         file_size = path.stat().st_size
-        if file_size > _MAX_COPY_TREE_FILE_BYTES:
+        if file_size > MAX_BUNDLE_FILE_BYTES:
             raise DefinitionError(
                 f"{path}: file too large"
-                f" ({file_size} bytes, max {_MAX_COPY_TREE_FILE_BYTES})",
+                f" ({file_size} bytes, max {MAX_BUNDLE_FILE_BYTES})",
             )
         artifacts.append(
             GeneratedArtifact(
