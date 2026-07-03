@@ -578,6 +578,45 @@ def test_missing_prompt_append_file_fails(tmp_path: Path) -> None:
         render(definition, Target.CLAUDE)
 
 
+@pytest.mark.parametrize(
+    "path_kind",
+    ["absolute", "windows_absolute", "parent"],
+)
+def test_prompt_append_file_rejects_paths_outside_project_root(
+    tmp_path: Path,
+    path_kind: str,
+) -> None:
+    if path_kind == "absolute":
+        prompt_append_file = str((tmp_path / "appendix.md").resolve())
+    elif path_kind == "windows_absolute":
+        prompt_append_file = "C:/outside/appendix.md"
+    else:
+        prompt_append_file = "../../appendix.md"
+    spec = tmp_path / "agents" / "bad.toml"
+    spec.parent.mkdir()
+    spec.write_text(
+        textwrap.dedent(
+            f"""
+            name = "bad"
+            description = "Bad"
+            instructions = "Base instructions"
+
+            [targets.claude]
+            prompt_append_file = "{prompt_append_file}"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    definition = load_definition(spec, root_dir=tmp_path / "agents")
+
+    with pytest.raises(
+        DefinitionError,
+        match=r"prompt_append_file must (be a relative path|stay within)",
+    ):
+        render(definition, Target.CLAUDE)
+
+
 def write_mcp_sample(root: Path) -> Path:
     definitions_dir = root / "mcp"
     definitions_dir.mkdir()
@@ -682,6 +721,42 @@ def test_render_skill_all_targets(tmp_path: Path) -> None:
     assert "display_name" not in codex
     assert "user-invocable: false" in copilot
     assert "Reply with one short greeting." in copilot
+
+
+@pytest.mark.parametrize(
+    "path_kind",
+    ["absolute", "windows_absolute", "parent"],
+)
+def test_skill_source_dir_rejects_paths_outside_definitions_dir(
+    tmp_path: Path,
+    path_kind: str,
+) -> None:
+    if path_kind == "absolute":
+        source_dir = str((tmp_path / "skill-bundle").resolve())
+    elif path_kind == "windows_absolute":
+        source_dir = "C:/outside/skill-bundle"
+    else:
+        source_dir = "../bundle"
+    spec = tmp_path / "skills" / "bad.toml"
+    spec.parent.mkdir()
+    spec.write_text(
+        textwrap.dedent(
+            f"""
+            name = "bad"
+            description = "Bad skill."
+            instructions = "Do the thing."
+            source_dir = "{source_dir}"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        DefinitionError,
+        match=r"source_dir must (be a relative path|stay within)",
+    ):
+        load_skill_definition(spec, root_dir=tmp_path / "skills")
 
 
 def test_skill_codex_interface_fields_are_immutable() -> None:
@@ -1065,6 +1140,45 @@ def test_render_plugin_manifest_all_targets(tmp_path: Path) -> None:
     assert codex["interface"]["displayName"] == "Hello Bundle"
     assert copilot["agents"] == "./agents/"
     assert copilot["skills"] == "./skills/"
+
+
+@pytest.mark.parametrize(
+    "path_kind",
+    ["absolute", "windows_absolute", "parent"],
+)
+def test_plugin_resources_dir_rejects_paths_outside_definitions_dir(
+    tmp_path: Path,
+    path_kind: str,
+) -> None:
+    if path_kind == "absolute":
+        resources_dir = str((tmp_path / "plugin-runtime").resolve())
+    elif path_kind == "windows_absolute":
+        resources_dir = "C:/outside/plugin-runtime"
+    else:
+        resources_dir = "../runtime"
+    definitions_dir = tmp_path / "plugins"
+    definitions_dir.mkdir()
+    spec = definitions_dir / "bad-bundle.toml"
+    spec.write_text(
+        textwrap.dedent(
+            f"""
+            name = "bad-bundle"
+            description = "Bad bundle."
+            version = "0.1.0"
+
+            [components]
+            resources_dir = "{resources_dir}"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        DefinitionError,
+        match=r"components.resources_dir must "
+        r"(be a relative path|stay within)",
+    ):
+        generate_plugins(definitions_dir=definitions_dir, output_dir=tmp_path)
 
 
 def test_generate_plugins_and_drift_check(tmp_path: Path) -> None:
