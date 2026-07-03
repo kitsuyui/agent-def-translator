@@ -271,6 +271,7 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
         ) as f:
             tmp_path = Path(f.name)
             f.write(content)
+        _chmod_artifact(artifact, path=tmp_path)
         tmp_path.replace(artifact.output_path)
         tmp_path = None
     except OSError as exc:
@@ -286,7 +287,6 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
         if tmp_path is not None:
             tmp_path.unlink(missing_ok=True)
         raise
-    _chmod_artifact(artifact)
 
 
 def _write_artifacts_batch(artifacts: list[GeneratedArtifact]) -> None:
@@ -318,9 +318,9 @@ def _write_artifacts_batch(artifacts: list[GeneratedArtifact]) -> None:
         for i, artifact in enumerate(artifacts):
             tmp = tmp_paths[i]
             if tmp is not None:
+                _chmod_artifact(artifact, path=tmp)
                 tmp.replace(artifact.output_path)
                 tmp_paths[i] = None
-            _chmod_artifact(artifact)
     except BaseException:
         for tmp in tmp_paths:
             if tmp is not None:
@@ -334,11 +334,15 @@ def _artifact_mode_has_drift(artifact: GeneratedArtifact) -> bool:
     return (artifact.output_path.stat().st_mode & 0o777) != artifact.mode
 
 
-def _chmod_artifact(artifact: GeneratedArtifact) -> None:
+def _chmod_artifact(
+    artifact: GeneratedArtifact,
+    path: Path | None = None,
+) -> None:
     if artifact.mode is None:
         return
+    target = path if path is not None else artifact.output_path
     try:
-        artifact.output_path.chmod(artifact.mode)
+        target.chmod(artifact.mode)
     except OSError as exc:
         msg = (
             f"failed to chmod {artifact.output_path}"

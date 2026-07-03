@@ -1327,6 +1327,80 @@ def test_skill_bundle_rejects_oversized_file(
         )
 
 
+def test_write_artifact_chmod_failure_leaves_no_final_path(
+    tmp_path: Path,
+) -> None:
+    """chmod failure before rename must not leave a file at the final path."""
+    import unittest.mock
+
+    from agent_def_translator._common import (
+        GeneratedArtifact,
+        Target,
+        _write_artifact,
+    )
+
+    output = tmp_path / "out.sh"
+    artifact = GeneratedArtifact(
+        target=Target.CLAUDE,
+        source_path=tmp_path / "src.toml",
+        output_path=output,
+        content=b"#!/bin/sh\necho hi\n",
+        mode=0o755,
+    )
+
+    with (
+        unittest.mock.patch.object(
+            Path,
+            "chmod",
+            side_effect=OSError("permission denied"),
+        ),
+        pytest.raises(OSError),
+    ):
+        _write_artifact(artifact)
+
+    # Final path must not exist; tmp cleaned up inside the except handler.
+    assert not output.exists(), "final path must not be left when chmod fails"
+
+
+def test_write_artifacts_batch_chmod_failure_leaves_no_final_paths(
+    tmp_path: Path,
+) -> None:
+    """chmod failure mid-batch must not leave any file at a final path."""
+    import unittest.mock
+
+    from agent_def_translator._common import (
+        GeneratedArtifact,
+        Target,
+        _write_artifacts_batch,
+    )
+
+    artifacts = [
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "src.toml",
+            output_path=tmp_path / f"out{i}.sh",
+            content=b"#!/bin/sh\n",
+            mode=0o755,
+        )
+        for i in range(3)
+    ]
+
+    with (
+        unittest.mock.patch.object(
+            Path,
+            "chmod",
+            side_effect=OSError("permission denied"),
+        ),
+        pytest.raises(OSError),
+    ):
+        _write_artifacts_batch(artifacts)
+
+    for artifact in artifacts:
+        assert not artifact.output_path.exists(), (
+            f"{artifact.output_path} must not exist after chmod failure"
+        )
+
+
 def test_yaml_key_safe_and_unsafe() -> None:
     from agent_def_translator._common import _yaml_key
 
