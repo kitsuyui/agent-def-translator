@@ -21,8 +21,9 @@ from agent_def_translator._common import (
     _write_artifacts_batch,
 )
 
-_MAX_COPY_TREE_FILE_COUNT = 1000
-_MAX_COPY_TREE_FILE_BYTES = 10 * 1024 * 1024
+# Keep the old private names used by tests and existing callers.
+_MAX_COPY_TREE_FILE_COUNT = MAX_BUNDLE_FILE_COUNT
+_MAX_COPY_TREE_FILE_BYTES = MAX_BUNDLE_FILE_BYTES
 
 PLUGIN_ROOT_FIELDS = frozenset(
     {
