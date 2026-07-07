@@ -17,6 +17,7 @@ from agent_def_translator._common import (
     _load_toml,
     _write_artifacts_batch,
     _write_toml_table,
+    coerce_targets,
 )
 
 MCP_ROOT_FIELDS = frozenset(
@@ -135,9 +136,10 @@ def load_mcp_config_definitions(
 
 def validate_mcp_config_definitions(
     definitions_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
 ) -> list[McpConfigDefinition]:
     definitions = load_mcp_config_definitions(definitions_dir)
+    targets = coerce_targets(targets)
     for definition in definitions:
         for target in targets:
             if _mcp_target_enabled(definition, target):
@@ -147,8 +149,9 @@ def validate_mcp_config_definitions(
 
 def render_mcp_config(
     definition: McpConfigDefinition,
-    target: Target,
+    target: Target | str,
 ) -> str:
+    target = Target.parse(target)
     target_config = definition.targets.get(target, {})
     if not _mcp_target_enabled(definition, target):
         msg = f"{definition.source_path}: target disabled: {target.value}"
@@ -166,9 +169,10 @@ def generate_mcp_configs(
     *,
     definitions_dir: Path,
     output_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
     write: bool = True,
 ) -> list[GeneratedArtifact]:
+    targets = coerce_targets(targets)
     artifacts: list[GeneratedArtifact] = []
     for definition in load_mcp_config_definitions(definitions_dir):
         for target in targets:
@@ -192,7 +196,7 @@ def check_mcp_config_drift(
     *,
     definitions_dir: Path,
     output_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
 ) -> list[Path]:
     artifacts = generate_mcp_configs(
         definitions_dir=definitions_dir,
@@ -207,7 +211,8 @@ def check_mcp_config_drift(
     ]
 
 
-def mcp_output_path(output_dir: Path, name: str, target: Target) -> Path:
+def mcp_output_path(output_dir: Path, name: str, target: Target | str) -> Path:
+    target = Target.parse(target)
     if target == Target.CODEX:
         return output_dir / "codex" / "mcp" / f"{name}.toml"
     if target == Target.CLAUDE:

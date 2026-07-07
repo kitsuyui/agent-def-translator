@@ -167,6 +167,10 @@ generated = generate(
 )
 ```
 
+`Target` is a plain `Enum`, not a `str` subtype. Pass `Target.parse("claude")`
+or an explicit target name string to public helper functions when you need to
+coerce user input at the boundary.
+
 ## Scope
 
 - Canonical definitions live in TOML files.

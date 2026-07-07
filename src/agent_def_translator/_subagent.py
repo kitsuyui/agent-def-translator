@@ -17,6 +17,7 @@ from agent_def_translator._common import (
     _write_artifacts_batch,
     _write_toml_table,
     _yaml_lines,
+    coerce_targets,
 )
 
 PROMPT_FIELDS = frozenset(
@@ -86,16 +87,18 @@ def load_definitions(definitions_dir: Path) -> list[AgentDefinition]:
 
 def validate_definitions(
     definitions_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
 ) -> list[AgentDefinition]:
     definitions = load_definitions(definitions_dir)
+    targets = coerce_targets(targets)
     for definition in definitions:
         for target in targets:
             render(definition, target)
     return definitions
 
 
-def render(definition: AgentDefinition, target: Target) -> str:
+def render(definition: AgentDefinition, target: Target | str) -> str:
+    target = Target.parse(target)
     if target == Target.CLAUDE:
         return _render_claude(definition)
     if target == Target.CODEX:
@@ -109,9 +112,10 @@ def generate(
     *,
     definitions_dir: Path,
     output_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
     write: bool = True,
 ) -> list[GeneratedArtifact]:
+    targets = coerce_targets(targets)
     artifacts: list[GeneratedArtifact] = []
     for definition in load_definitions(definitions_dir):
         for target in targets:
@@ -133,7 +137,7 @@ def check_drift(
     *,
     definitions_dir: Path,
     output_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
 ) -> list[Path]:
     artifacts = generate(
         definitions_dir=definitions_dir,
@@ -148,7 +152,8 @@ def check_drift(
     ]
 
 
-def output_path(output_dir: Path, name: str, target: Target) -> Path:
+def output_path(output_dir: Path, name: str, target: Target | str) -> Path:
+    target = Target.parse(target)
     if target == Target.CLAUDE:
         return output_dir / "claude" / "agents" / f"{name}.md"
     if target == Target.CODEX:

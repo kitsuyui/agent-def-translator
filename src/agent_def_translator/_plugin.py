@@ -19,6 +19,7 @@ from agent_def_translator._common import (
     _load_toml,
     _resolve_relative_path,
     _write_artifacts_batch,
+    coerce_targets,
 )
 
 # Keep the old private names used by tests and existing callers.
@@ -169,9 +170,10 @@ def load_plugin_definitions(definitions_dir: Path) -> list[PluginDefinition]:
 
 def validate_plugin_definitions(
     definitions_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
 ) -> list[PluginDefinition]:
     definitions = load_plugin_definitions(definitions_dir)
+    targets = coerce_targets(targets)
     for definition in definitions:
         for target in targets:
             if _plugin_target_enabled(definition, target):
@@ -181,8 +183,9 @@ def validate_plugin_definitions(
 
 def render_plugin_manifest(
     definition: PluginDefinition,
-    target: Target,
+    target: Target | str,
 ) -> str:
+    target = Target.parse(target)
     target_config = definition.targets.get(target, {})
     if not _plugin_target_enabled(definition, target):
         msg = f"{definition.source_path}: target disabled: {target.value}"
@@ -215,9 +218,10 @@ def generate_plugins(
     *,
     definitions_dir: Path,
     output_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
     write: bool = True,
 ) -> list[GeneratedArtifact]:
+    targets = coerce_targets(targets)
     definitions = list(load_plugin_definitions(definitions_dir))
     if Target.CODEX in targets:
         codex_plugins = [
@@ -273,7 +277,7 @@ def check_plugin_drift(
     *,
     definitions_dir: Path,
     output_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
 ) -> list[Path]:
     artifacts = generate_plugins(
         definitions_dir=definitions_dir,
@@ -288,7 +292,10 @@ def check_plugin_drift(
     ]
 
 
-def plugin_root_path(output_dir: Path, name: str, target: Target) -> Path:
+def plugin_root_path(
+    output_dir: Path, name: str, target: Target | str,
+) -> Path:
+    target = Target.parse(target)
     if target == Target.CLAUDE:
         return output_dir / "claude" / "plugins" / name
     if target == Target.CODEX:
@@ -301,8 +308,9 @@ def plugin_root_path(output_dir: Path, name: str, target: Target) -> Path:
 def plugin_manifest_output_path(
     output_dir: Path,
     name: str,
-    target: Target,
+    target: Target | str,
 ) -> Path:
+    target = Target.parse(target)
     root = plugin_root_path(output_dir, name, target)
     if target == Target.CLAUDE:
         return root / ".claude-plugin" / "plugin.json"

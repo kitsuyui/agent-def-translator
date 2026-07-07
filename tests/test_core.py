@@ -26,10 +26,15 @@ from agent_def_translator import (
     load_mcp_config_definition,
     load_plugin_definition,
     load_skill_definition,
+    mcp_output_path,
+    output_path,
+    plugin_manifest_output_path,
+    plugin_root_path,
     render,
     render_mcp_config,
     render_plugin_manifest,
     render_skill,
+    skill_output_path,
     validate_definitions,
     validate_mcp_config_definitions,
     validate_plugin_definitions,
@@ -88,6 +93,36 @@ def test_render_all_targets(tmp_path: Path) -> None:
     assert "Claude appendix" in claude
     assert 'sandbox_mode = "read-only"' in codex
     assert 'target: "vscode"' in copilot
+
+
+def test_target_is_not_str_subclass() -> None:
+    assert Target.CLAUDE != "claude"
+    assert not isinstance(Target.CLAUDE, str)
+
+
+def test_subagent_public_helpers_accept_raw_target_names(
+    tmp_path: Path,
+) -> None:
+    spec = write_sample(tmp_path)
+    definition = load_definition(spec, root_dir=tmp_path / "agents")
+
+    assert "Claude appendix" in render(definition, "claude")
+    assert output_path(tmp_path, "sample", "claude") == (
+        tmp_path / "claude" / "agents" / "sample.md"
+    )
+
+    artifacts = generate(
+        definitions_dir=tmp_path / "agents",
+        output_dir=tmp_path / "generated",
+        targets=("claude", "codex", "copilot"),
+        write=False,
+    )
+
+    assert [artifact.target for artifact in artifacts] == [
+        Target.CLAUDE,
+        Target.CODEX,
+        Target.COPILOT,
+    ]
 
 
 def test_render_uses_prompt_override_and_hides_prompt_controls(
@@ -723,6 +758,18 @@ def test_render_skill_all_targets(tmp_path: Path) -> None:
     assert "Reply with one short greeting." in copilot
 
 
+def test_skill_public_helpers_accept_raw_target_names(
+    tmp_path: Path,
+) -> None:
+    spec = write_skill_sample(tmp_path)
+    definition = load_skill_definition(spec, root_dir=tmp_path / "skills")
+
+    assert 'context: "fork"' in render_skill(definition, "claude")
+    assert skill_output_path(tmp_path, "hello", "codex") == (
+        tmp_path / "codex" / "skills" / "hello" / "SKILL.md"
+    )
+
+
 @pytest.mark.parametrize(
     "path_kind",
     ["absolute", "windows_absolute", "parent"],
@@ -928,6 +975,19 @@ def test_render_mcp_config_all_targets(tmp_path: Path) -> None:
     assert '"type": "http"' in claude
     assert '"openaiDeveloperDocs"' in claude
     assert '"tools": [' in copilot
+
+
+def test_mcp_public_helpers_accept_raw_target_names(tmp_path: Path) -> None:
+    spec = write_mcp_sample(tmp_path)
+    definition = load_mcp_config_definition(spec, root_dir=tmp_path / "mcp")
+
+    assert "[mcp_servers.openaiDeveloperDocs]" in render_mcp_config(
+        definition,
+        "codex",
+    )
+    assert mcp_output_path(tmp_path, "openai-docs", "claude") == (
+        tmp_path / "claude" / "mcp" / "openai-docs.json"
+    )
 
 
 def test_render_mcp_stdio_config(tmp_path: Path) -> None:
@@ -1140,6 +1200,30 @@ def test_render_plugin_manifest_all_targets(tmp_path: Path) -> None:
     assert codex["interface"]["displayName"] == "Hello Bundle"
     assert copilot["agents"] == "./agents/"
     assert copilot["skills"] == "./skills/"
+
+
+def test_plugin_public_helpers_accept_raw_target_names(
+    tmp_path: Path,
+) -> None:
+    spec = write_plugin_sample(tmp_path)
+    definition = load_plugin_definition(spec, root_dir=tmp_path / "plugins")
+
+    assert render_plugin_manifest(definition, "copilot").endswith("\n")
+    assert plugin_root_path(tmp_path, "hello-bundle", "claude") == (
+        tmp_path / "claude" / "plugins" / "hello-bundle"
+    )
+    assert plugin_manifest_output_path(
+        tmp_path,
+        "hello-bundle",
+        "codex",
+    ) == (
+        tmp_path
+        / "codex"
+        / "plugins"
+        / "hello-bundle"
+        / ".codex-plugin"
+        / "plugin.json"
+    )
 
 
 @pytest.mark.parametrize(
@@ -1608,7 +1692,8 @@ def test_mcp_json_fragment_merge_rejects_too_many_files(
     mcp_dir.mkdir()
     for i in range(3):
         (mcp_dir / f"fragment{i}.json").write_text(
-            '{"mcpServers": {}}', encoding="utf-8",
+            '{"mcpServers": {}}',
+            encoding="utf-8",
         )
     with pytest.raises(DefinitionError, match="too many MCP fragment files"):
         _plugin._merge_json_mcp_fragments(mcp_dir)
@@ -1624,7 +1709,8 @@ def test_mcp_json_fragment_merge_rejects_oversized_file(
     mcp_dir = tmp_path / "mcp"
     mcp_dir.mkdir()
     (mcp_dir / "fragment.json").write_text(
-        '{"mcpServers": {"large": {}}}', encoding="utf-8",
+        '{"mcpServers": {"large": {}}}',
+        encoding="utf-8",
     )
     with pytest.raises(DefinitionError, match="too large"):
         _plugin._merge_json_mcp_fragments(mcp_dir)
@@ -1641,7 +1727,8 @@ def test_mcp_toml_fragment_merge_rejects_too_many_files(
     mcp_dir.mkdir()
     for i in range(3):
         (mcp_dir / f"fragment{i}.toml").write_text(
-            "[mcp_servers]\n", encoding="utf-8",
+            "[mcp_servers]\n",
+            encoding="utf-8",
         )
     with pytest.raises(DefinitionError, match="too many MCP fragment files"):
         _plugin._merge_codex_mcp_fragments(mcp_dir)

@@ -19,6 +19,7 @@ from agent_def_translator._common import (
     _resolve_relative_path,
     _write_artifacts_batch,
     _yaml_lines,
+    coerce_targets,
 )
 
 SKILL_NAME_PATTERN = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
@@ -183,9 +184,10 @@ def load_skill_definitions(definitions_dir: Path) -> list[SkillDefinition]:
 
 def validate_skill_definitions(
     definitions_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
 ) -> list[SkillDefinition]:
     definitions = load_skill_definitions(definitions_dir)
+    targets = coerce_targets(targets)
     for definition in definitions:
         for target in targets:
             if _skill_target_enabled(definition, target):
@@ -195,8 +197,9 @@ def validate_skill_definitions(
 
 def render_skill(
     definition: SkillDefinition,
-    target: Target,
+    target: Target | str,
 ) -> str:
+    target = Target.parse(target)
     target_config = definition.targets.get(target, {})
     if not _skill_target_enabled(definition, target):
         msg = f"{definition.source_path}: target disabled: {target.value}"
@@ -214,9 +217,10 @@ def generate_skills(
     *,
     definitions_dir: Path,
     output_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
     write: bool = True,
 ) -> list[GeneratedArtifact]:
+    targets = coerce_targets(targets)
     artifacts: list[GeneratedArtifact] = []
     for definition in load_skill_definitions(definitions_dir):
         for target in targets:
@@ -259,7 +263,7 @@ def check_skill_drift(
     *,
     definitions_dir: Path,
     output_dir: Path,
-    targets: tuple[Target, ...] = tuple(Target),
+    targets: tuple[Target | str, ...] = tuple(Target),
 ) -> list[Path]:
     artifacts = generate_skills(
         definitions_dir=definitions_dir,
@@ -274,7 +278,10 @@ def check_skill_drift(
     ]
 
 
-def skill_output_path(output_dir: Path, name: str, target: Target) -> Path:
+def skill_output_path(
+    output_dir: Path, name: str, target: Target | str,
+) -> Path:
+    target = Target.parse(target)
     if target == Target.CLAUDE:
         return output_dir / "claude" / "skills" / name / "SKILL.md"
     if target == Target.CODEX:
