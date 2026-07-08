@@ -122,3 +122,8 @@ Target-specific tables may override these fields. They may also set:
 Keep authentication material out of definitions. Prefer environment variable
 names such as `bearer_token_env_var` or `env` keys whose values are resolved by
 the target runtime.
+
+For GitHub Copilot MCP output, omitted `tools` defaults to `["*"]` so callers
+can rely on Copilot's wildcard behavior without restating it in every
+definition. An explicit empty list such as `tools = []` is preserved as empty
+rather than widened to `["*"]`.

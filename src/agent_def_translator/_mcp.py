@@ -384,6 +384,7 @@ def _json_mcp_server(
     claude: bool,
 ) -> dict[str, Any]:
     transport = str(config.get("transport", default_transport))
+    tools = config.get("tools")
     if transport in {"http", "sse"}:
         server: dict[str, Any] = {
             "type": transport,
@@ -391,8 +392,8 @@ def _json_mcp_server(
         }
         if config.get("headers"):
             server["headers"] = config["headers"]
-        if config.get("tools") and not claude:
-            server["tools"] = config["tools"]
+        if not claude and "tools" in config and tools is not None:
+            server["tools"] = tools
         return server
     if transport == "stdio":
         server = {
@@ -403,8 +404,8 @@ def _json_mcp_server(
             server["args"] = config["args"]
         if config.get("env"):
             server["env"] = config["env"]
-        if config.get("tools") and not claude:
-            server["tools"] = config["tools"]
+        if not claude and "tools" in config and tools is not None:
+            server["tools"] = tools
         return server
     raise DefinitionError(f"unsupported MCP transport: {transport}")
 
