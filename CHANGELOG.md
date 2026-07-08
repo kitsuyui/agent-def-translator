@@ -9,6 +9,11 @@ details.
 
 ## [Unreleased]
 
+### Changed
+
+- Make `Target` a plain `Enum` and accept explicit target-name strings at the
+  public Python API boundary.
+
 ## [0.1.2] - 2026-05-06
 
 ### Changed

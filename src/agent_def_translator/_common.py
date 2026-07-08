@@ -36,13 +36,19 @@ def _load_toml(path: Path) -> dict[str, Any]:
         raise DefinitionError(f"{path}: {e}") from e
 
 
-class Target(str, Enum):
+class Target(Enum):
     CLAUDE = "claude"
     CODEX = "codex"
     COPILOT = "copilot"
 
     @classmethod
-    def parse(cls, value: str) -> Target:
+    def parse(cls, value: Target | str) -> Target:
+        if isinstance(value, cls):
+            return value
+        if not isinstance(value, str):
+            choices = ", ".join(item.value for item in cls)
+            msg = f"unsupported target: {value}. Expected one of: {choices}"
+            raise DefinitionError(msg)
         # "vscode" is accepted as a compatibility alias for COPILOT.
         normalized = value.strip().lower()
         if normalized == "vscode":
@@ -53,6 +59,10 @@ class Target(str, Enum):
             choices = ", ".join(item.value for item in cls)
             msg = f"unsupported target: {value}. Expected one of: {choices}"
             raise DefinitionError(msg) from exc
+
+
+def coerce_targets(values: tuple[Target | str, ...]) -> tuple[Target, ...]:
+    return tuple(Target.parse(value) for value in values)
 
 
 @dataclass(frozen=True, slots=True)
