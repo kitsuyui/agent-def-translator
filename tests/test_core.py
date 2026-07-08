@@ -1827,3 +1827,46 @@ def test_mcp_toml_fragment_merge_rejects_oversized_file(
     )
     with pytest.raises(DefinitionError, match="too large"):
         _plugin._merge_codex_mcp_fragments(mcp_dir)
+
+
+def test_skill_bundle_rejects_symlinked_file(tmp_path: Path) -> None:
+    import os
+    import sys
+
+    if sys.platform == "win32":
+        pytest.skip("symlinks require elevated privileges on Windows")
+    write_skill_sample(tmp_path)
+    bundle_dir = tmp_path / "skills" / "hello"
+    secret = tmp_path / "secret.txt"
+    secret.write_text("secret", encoding="utf-8")
+    os.symlink(secret, bundle_dir / "leak.txt")
+    with pytest.raises(DefinitionError, match="symlinks are not allowed"):
+        generate_skills(
+            definitions_dir=tmp_path / "skills",
+            output_dir=tmp_path / "out",
+        )
+
+
+def test_plugin_resources_dir_rejects_symlinked_file(tmp_path: Path) -> None:
+    import os
+    import sys
+
+    if sys.platform == "win32":
+        pytest.skip("symlinks require elevated privileges on Windows")
+    write_sample(tmp_path)
+    write_skill_sample(tmp_path)
+    write_mcp_sample(tmp_path)
+    write_plugin_sample(tmp_path)
+    output_dir = tmp_path / "out"
+    generate(definitions_dir=tmp_path / "agents", output_dir=output_dir)
+    generate_skills(definitions_dir=tmp_path / "skills", output_dir=output_dir)
+    generate_mcp_configs(definitions_dir=tmp_path / "mcp", output_dir=output_dir)
+    resources_dir = tmp_path / "plugins" / "runtime"
+    secret = tmp_path / "secret.txt"
+    secret.write_text("secret", encoding="utf-8")
+    os.symlink(secret, resources_dir / "leak.txt")
+    with pytest.raises(DefinitionError, match="symlinks are not allowed"):
+        generate_plugins(
+            definitions_dir=tmp_path / "plugins",
+            output_dir=output_dir,
+        )

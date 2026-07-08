@@ -17,6 +17,7 @@ from agent_def_translator._common import (
     _is_string_list,
     _load_target_configs,
     _load_toml,
+    _iter_bundle_files,
     _resolve_relative_path,
     _write_artifacts_batch,
     coerce_targets,
@@ -672,9 +673,7 @@ def _copy_tree_artifacts(
         raise DefinitionError(msg)
     artifacts: list[GeneratedArtifact] = []
     file_count = 0
-    for path in sorted(source_root.rglob("*")):
-        if not path.is_file():
-            continue
+    for path in _iter_bundle_files(source_root):
         file_count += 1
         if file_count > MAX_BUNDLE_FILE_COUNT:
             raise DefinitionError(
