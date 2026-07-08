@@ -4,10 +4,10 @@ import json
 import re
 import sys
 import tempfile
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path, PureWindowsPath
-from collections.abc import Iterator
 from typing import Any
 
 if sys.version_info >= (3, 11):
@@ -169,14 +169,14 @@ def _iter_bundle_files(source_root: Path) -> Iterator[Path]:
     for path in sorted(source_root.rglob("*")):
         if path.is_symlink():
             raise DefinitionError(
-                f"{path}: symlinks are not allowed in bundle directories"
+                f"{path}: symlinks are not allowed in bundle directories",
             )
         if not path.is_file():
             continue
         resolved = path.resolve()
         if resolved_root not in resolved.parents:
             raise DefinitionError(
-                f"{path}: resolved path escapes bundle root {resolved_root}"
+                f"{path}: resolved path escapes bundle root {resolved_root}",
             )
         yield path
 
