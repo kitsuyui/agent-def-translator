@@ -1019,6 +1019,84 @@ def test_render_mcp_stdio_config(tmp_path: Path) -> None:
     assert '"FOO": "bar"' in copilot
 
 
+def test_render_mcp_copilot_preserves_explicit_empty_tools_for_http(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "sample.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "sample"
+            description = "HTTP sample server."
+            transport = "http"
+            url = "https://example.com/mcp"
+
+            [targets.copilot]
+            tools = []
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    definition = load_mcp_config_definition(spec)
+
+    copilot = json.loads(render_mcp_config(definition, Target.COPILOT))
+    server = copilot["mcpServers"]["sample"]
+
+    assert server["tools"] == []
+
+
+def test_render_mcp_copilot_preserves_explicit_empty_tools_for_stdio(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "sample.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "sample"
+            description = "Local sample server."
+            transport = "stdio"
+            command = "node"
+
+            [targets.copilot]
+            tools = []
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    definition = load_mcp_config_definition(spec)
+
+    copilot = json.loads(render_mcp_config(definition, Target.COPILOT))
+    server = copilot["mcpServers"]["sample"]
+
+    assert server["tools"] == []
+
+
+def test_render_mcp_copilot_defaults_tools_to_wildcard_when_omitted(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "sample.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "sample"
+            description = "HTTP sample server."
+            transport = "http"
+            url = "https://example.com/mcp"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    definition = load_mcp_config_definition(spec)
+
+    copilot = json.loads(render_mcp_config(definition, Target.COPILOT))
+    server = copilot["mcpServers"]["sample"]
+
+    assert server["tools"] == ["*"]
+
+
 def test_generate_mcp_configs_and_drift_check(tmp_path: Path) -> None:
     write_mcp_sample(tmp_path)
     output_dir = tmp_path / "generated"
