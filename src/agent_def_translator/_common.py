@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import sys
 import tempfile
+from collections.abc import Generator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path, PureWindowsPath
 from typing import Any
+
+try:
+    import fcntl as _fcntl
+except ImportError:  # pragma: no cover
+    _fcntl = None  # type: ignore[assignment]
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -321,7 +328,29 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
         raise
 
 
-def _write_artifacts_batch(artifacts: list[GeneratedArtifact]) -> None:
+@contextlib.contextmanager
+def _output_dir_write_lock(output_dir: Path) -> Generator[None, None, None]:
+    """Hold an exclusive cross-process write lock on output_dir.
+
+    Uses fcntl.flock on POSIX. A no-op on platforms without fcntl (Windows).
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    lock_path = output_dir / ".translate.lock"
+    if _fcntl is None:  # pragma: no cover
+        yield
+        return
+    with lock_path.open("w") as lf:
+        _fcntl.flock(lf, _fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            _fcntl.flock(lf, _fcntl.LOCK_UN)
+
+
+def _write_artifacts_batch(
+    artifacts: list[GeneratedArtifact],
+    output_dir: Path | None = None,
+) -> None:
     """Write artifacts with a minimized partial-state window.
 
     Phase 1 (slow): write all content to temp files in the same directories
@@ -329,7 +358,13 @@ def _write_artifacts_batch(artifacts: list[GeneratedArtifact]) -> None:
     Phase 2 (fast): rename all temp files to their final paths.
 
     On failure during phase 1, any created temp files are removed.
+    When output_dir is provided, an exclusive cross-process file lock is held
+    for the duration so concurrent translate runs cannot interleave writes.
     """
+    if output_dir is not None:
+        with _output_dir_write_lock(output_dir):
+            _write_artifacts_batch(artifacts)
+        return
     for artifact in artifacts:
         artifact.output_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_paths: list[Path | None] = [None] * len(artifacts)
