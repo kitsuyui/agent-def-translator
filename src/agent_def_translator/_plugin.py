@@ -15,6 +15,7 @@ from agent_def_translator._common import (
     _artifact_has_drift,
     _is_json_value,
     _is_string_list,
+    _iter_bundle_files,
     _load_target_configs,
     _load_toml,
     _resolve_relative_path,
@@ -671,11 +672,10 @@ def _copy_tree_artifacts(
         msg = f"component directory not found: {source_root}"
         raise DefinitionError(msg)
     artifacts: list[GeneratedArtifact] = []
-    file_count = 0
-    for path in sorted(source_root.rglob("*")):
-        if not path.is_file():
-            continue
-        file_count += 1
+    for file_count, path in enumerate(
+        _iter_bundle_files(source_root),
+        start=1,
+    ):
         if file_count > MAX_BUNDLE_FILE_COUNT:
             raise DefinitionError(
                 f"{source_root}: directory has too many files"

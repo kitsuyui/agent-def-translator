@@ -5,7 +5,7 @@ import json
 import re
 import sys
 import tempfile
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path, PureWindowsPath
@@ -167,6 +167,24 @@ def _resolve_relative_path(
         msg = f"{source_path}: {field_name} must stay within {root}"
         raise DefinitionError(msg)
     return resolved
+
+
+def _iter_bundle_files(source_root: Path) -> Iterator[Path]:
+    """Yield regular files under source_root, rejecting symlinks."""
+    resolved_root = source_root.resolve()
+    for path in sorted(source_root.rglob("*")):
+        if path.is_symlink():
+            raise DefinitionError(
+                f"{path}: symlinks are not allowed in bundle directories",
+            )
+        if not path.is_file():
+            continue
+        resolved = path.resolve()
+        if resolved_root not in resolved.parents:
+            raise DefinitionError(
+                f"{path}: resolved path escapes bundle root {resolved_root}",
+            )
+        yield path
 
 
 def _is_string_dict(value: Any) -> bool:

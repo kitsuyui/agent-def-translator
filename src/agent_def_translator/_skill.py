@@ -14,6 +14,7 @@ from agent_def_translator._common import (
     _artifact_has_drift,
     _is_string_list,
     _is_yaml_value,
+    _iter_bundle_files,
     _load_target_configs,
     _load_toml,
     _resolve_relative_path,
@@ -364,9 +365,7 @@ def _skill_bundle_artifacts(
     skill_dir = skill_output_path(output_dir, definition.name, target).parent
     artifacts: list[GeneratedArtifact] = []
     file_count = 0
-    for path in sorted(definition.bundle_dir.rglob("*")):
-        if not path.is_file():
-            continue
+    for path in _iter_bundle_files(definition.bundle_dir):
         file_count += 1
         if file_count > MAX_BUNDLE_FILE_COUNT:
             raise DefinitionError(
