@@ -188,7 +188,7 @@ def generate_mcp_configs(
             )
             artifacts.append(artifact)
     if write:
-        _write_artifacts_batch(artifacts)
+        _write_artifacts_batch(artifacts, output_dir=output_dir)
     return artifacts
 
 

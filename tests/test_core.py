@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import sys
 import textwrap
+import time
 from pathlib import Path
 from typing import Literal, cast
 
@@ -1871,3 +1873,54 @@ def test_plugin_resources_dir_rejects_symlinked_file(tmp_path: Path) -> None:
             definitions_dir=tmp_path / "plugins",
             output_dir=output_dir,
         )
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="flock-based lock is POSIX only",
+)
+def test_write_artifacts_batch_concurrent_writers_serialize(
+    tmp_path: Path,
+) -> None:
+    """Concurrent writers to the same output_dir serialize, not interleave."""
+    import multiprocessing
+
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    log_file = tmp_path / "log.txt"
+
+    def hold_lock_and_log(
+        output_dir_str: str, log_path_str: str, token: str,
+    ) -> None:
+        from agent_def_translator._common import _output_dir_write_lock
+
+        with _output_dir_write_lock(Path(output_dir_str)):
+            with Path(log_path_str).open("a") as f:
+                f.write(f"start:{token}\n")
+            time.sleep(0.05)
+            with Path(log_path_str).open("a") as f:
+                f.write(f"end:{token}\n")
+
+    ctx = multiprocessing.get_context("fork")
+    p1 = ctx.Process(
+        target=hold_lock_and_log,
+        args=(str(output_dir), str(log_file), "A"),
+    )
+    p2 = ctx.Process(
+        target=hold_lock_and_log,
+        args=(str(output_dir), str(log_file), "B"),
+    )
+    p1.start()
+    time.sleep(0.01)
+    p2.start()
+    p1.join(timeout=5)
+    p2.join(timeout=5)
+
+    assert p1.exitcode == 0
+    assert p2.exitcode == 0
+
+    lines = log_file.read_text().splitlines()
+    assert lines in [
+        ["start:A", "end:A", "start:B", "end:B"],
+        ["start:B", "end:B", "start:A", "end:A"],
+    ]

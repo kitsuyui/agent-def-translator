@@ -270,7 +270,7 @@ def generate_plugins(
                 )
             artifacts.extend(target_artifacts)
     if write:
-        _write_artifacts_batch(artifacts)
+        _write_artifacts_batch(artifacts, output_dir=output_dir)
     return artifacts
 
 
