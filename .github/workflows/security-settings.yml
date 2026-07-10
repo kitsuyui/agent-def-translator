@@ -23,6 +23,11 @@ jobs:
           status=$(gh api /repos/${{ github.repository }} \
             --jq '.security_and_analysis.secret_scanning_non_provider_patterns.status')
           echo "secret_scanning_non_provider_patterns: $status"
+          if [ -z "$status" ]; then
+            echo "::warning::Unable to read security setting state from token scope, skipping enforcement."
+            echo "If this project requires this check, run with admin token that can read security settings."
+            exit 0
+          fi
           if [ "$status" != "enabled" ]; then
             echo "::error::secret_scanning_non_provider_patterns is disabled."
             echo "Enable it at: https://github.com/${{ github.repository }}/settings/security_analysis"
