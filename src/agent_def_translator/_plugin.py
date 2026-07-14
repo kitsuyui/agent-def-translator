@@ -175,6 +175,11 @@ def validate_plugin_definitions(
 ) -> list[PluginDefinition]:
     definitions = load_plugin_definitions(definitions_dir)
     targets = coerce_targets(targets)
+    _check_codex_plugin_count(
+        definitions,
+        definitions_dir=definitions_dir,
+        targets=targets,
+    )
     for definition in definitions:
         for target in targets:
             if _plugin_target_enabled(definition, target):
@@ -224,19 +229,11 @@ def generate_plugins(
 ) -> list[GeneratedArtifact]:
     targets = coerce_targets(targets)
     definitions = list(load_plugin_definitions(definitions_dir))
-    if Target.CODEX in targets:
-        codex_plugins = [
-            d for d in definitions if _plugin_target_enabled(d, Target.CODEX)
-        ]
-        if len(codex_plugins) > 1:
-            names = ", ".join(d.name for d in codex_plugins)
-            msg = (
-                f"{definitions_dir}: multiple Codex-enabled plugins: "
-                f"{names}. All write to the same codex/marketplace.json"
-                " and would silently overwrite each other. "
-                "Enable Codex for at most one plugin per directory."
-            )
-            raise DefinitionError(msg)
+    _check_codex_plugin_count(
+        definitions,
+        definitions_dir=definitions_dir,
+        targets=targets,
+    )
     artifacts: list[GeneratedArtifact] = []
     for definition in definitions:
         for target in targets:
@@ -294,7 +291,9 @@ def check_plugin_drift(
 
 
 def plugin_root_path(
-    output_dir: Path, name: str, target: Target | str,
+    output_dir: Path,
+    name: str,
+    target: Target | str,
 ) -> Path:
     target = Target.parse(target)
     if target == Target.CLAUDE:
@@ -339,6 +338,31 @@ def _reject_duplicate_plugin_names(
             )
             raise DefinitionError(msg)
         seen[definition.name] = definition.source_path
+
+
+def _check_codex_plugin_count(
+    definitions: list[PluginDefinition],
+    *,
+    definitions_dir: Path,
+    targets: tuple[Target, ...],
+) -> None:
+    if Target.CODEX not in targets:
+        return
+    codex_plugins = [
+        definition
+        for definition in definitions
+        if _plugin_target_enabled(definition, Target.CODEX)
+    ]
+    if len(codex_plugins) <= 1:
+        return
+    names = ", ".join(definition.name for definition in codex_plugins)
+    msg = (
+        f"{definitions_dir}: multiple Codex-enabled plugins: "
+        f"{names}. All write to the same codex/marketplace.json"
+        " and would silently overwrite each other. "
+        "Enable Codex for at most one plugin per directory."
+    )
+    raise DefinitionError(msg)
 
 
 def _plugin_target_enabled(

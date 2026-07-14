@@ -1573,6 +1573,54 @@ def test_generate_plugins_rejects_multiple_codex_plugins(
         )
 
 
+def test_validate_plugin_definitions_rejects_multiple_codex_plugins(
+    tmp_path: Path,
+) -> None:
+    definitions_dir = tmp_path / "plugins"
+    definitions_dir.mkdir()
+    plugin_toml = (
+        textwrap.dedent(
+            """
+        name = "{name}"
+        description = "Plugin {name}."
+        version = "0.1.0"
+        author = "Test"
+        repository = "https://example.com/{name}"
+        homepage = "https://example.com/{name}"
+        license = "MIT"
+
+        [components]
+
+        [interface]
+        display_name = "{name}"
+        short_description = "Test plugin."
+        long_description = "Test plugin."
+        developer_name = "Test"
+        category = "Productivity"
+        capabilities = []
+        website_url = "https://example.com/{name}"
+
+        [marketplace]
+        name = "{name}-local"
+
+        [targets.codex]
+        """,
+        ).strip()
+        + "\n"
+    )
+    (definitions_dir / "plugin-a.toml").write_text(
+        plugin_toml.format(name="plugin-a"),
+        encoding="utf-8",
+    )
+    (definitions_dir / "plugin-b.toml").write_text(
+        plugin_toml.format(name="plugin-b"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DefinitionError, match=r"multiple Codex-enabled"):
+        validate_plugin_definitions(definitions_dir)
+
+
 def test_skill_bundle_rejects_too_many_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1890,7 +1938,9 @@ def test_write_artifacts_batch_concurrent_writers_serialize(
     log_file = tmp_path / "log.txt"
 
     def hold_lock_and_log(
-        output_dir_str: str, log_path_str: str, token: str,
+        output_dir_str: str,
+        log_path_str: str,
+        token: str,
     ) -> None:
         from agent_def_translator._common import _output_dir_write_lock
 
