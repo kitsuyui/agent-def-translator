@@ -781,7 +781,12 @@ def _merge_json_mcp_fragments(source_root: Path) -> dict[str, Any]:
         servers = fragment.get("mcpServers")
         if not isinstance(servers, dict):
             continue
-        payload["mcpServers"].update(servers)
+        _merge_mcp_servers(
+            payload["mcpServers"],
+            servers,
+            path=path,
+            key_name="server_name",
+        )
     return payload
 
 
@@ -805,8 +810,27 @@ def _merge_codex_mcp_fragments(source_root: Path) -> dict[str, Any]:
         servers = fragment.get("mcp_servers")
         if not isinstance(servers, dict):
             continue
-        payload["mcpServers"].update(servers)
+        _merge_mcp_servers(
+            payload["mcpServers"],
+            servers,
+            path=path,
+            key_name="server_name",
+        )
     return payload
+
+
+def _merge_mcp_servers(
+    merged: dict[str, Any],
+    servers: dict[str, Any],
+    *,
+    path: Path,
+    key_name: str,
+) -> None:
+    for name, server in servers.items():
+        if name in merged:
+            msg = f"{path}: duplicate MCP {key_name} {name!r} in plugin bundle"
+            raise DefinitionError(msg)
+        merged[name] = server
 
 
 def _render_codex_marketplace(
