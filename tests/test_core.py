@@ -1844,6 +1844,49 @@ def test_mcp_json_fragment_merge_rejects_oversized_file(
         _plugin._merge_json_mcp_fragments(mcp_dir)
 
 
+def test_mcp_json_fragment_merge_rejects_duplicate_server_names(
+    tmp_path: Path,
+) -> None:
+    from agent_def_translator import _plugin
+
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    (mcp_dir / "first.json").write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "shared": {
+                        "type": "http",
+                        "url": "https://example.com/first",
+                    },
+                },
+            },
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (mcp_dir / "second.json").write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "shared": {
+                        "type": "http",
+                        "url": "https://example.com/second",
+                    },
+                },
+            },
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        DefinitionError,
+        match=r"second\.json: duplicate MCP server_name 'shared'",
+    ):
+        _plugin._merge_json_mcp_fragments(mcp_dir)
+
+
 def test_mcp_toml_fragment_merge_rejects_too_many_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1876,6 +1919,41 @@ def test_mcp_toml_fragment_merge_rejects_oversized_file(
         encoding="utf-8",
     )
     with pytest.raises(DefinitionError, match="too large"):
+        _plugin._merge_codex_mcp_fragments(mcp_dir)
+
+
+def test_mcp_toml_fragment_merge_rejects_duplicate_server_names(
+    tmp_path: Path,
+) -> None:
+    from agent_def_translator import _plugin
+
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    (mcp_dir / "first.toml").write_text(
+        "\n".join(
+            [
+                "[mcp_servers.shared]",
+                "url = 'https://example.com/first'",
+            ],
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (mcp_dir / "second.toml").write_text(
+        "\n".join(
+            [
+                "[mcp_servers.shared]",
+                "url = 'https://example.com/second'",
+            ],
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        DefinitionError,
+        match=r"second\.toml: duplicate MCP server_name 'shared'",
+    ):
         _plugin._merge_codex_mcp_fragments(mcp_dir)
 
 

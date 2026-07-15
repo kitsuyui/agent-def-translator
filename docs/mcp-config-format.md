@@ -123,6 +123,11 @@ Keep authentication material out of definitions. Prefer environment variable
 names such as `bearer_token_env_var` or `env` keys whose values are resolved by
 the target runtime.
 
+When plugin bundles merge generated MCP fragments into one `.mcp.json`, the
+effective `server_name` must be unique within that bundle for the selected
+target. `plugin translate` rejects duplicates instead of silently overwriting an
+earlier server entry.
+
 For GitHub Copilot MCP output, omitted `tools` defaults to `["*"]` so callers
 can rely on Copilot's wildcard behavior without restating it in every
 definition. An explicit empty list such as `tools = []` is preserved as empty
