@@ -1750,6 +1750,61 @@ def test_write_artifacts_batch_chmod_failure_leaves_no_final_paths(
         )
 
 
+def test_write_artifacts_batch_replace_failure_restores_original_outputs(
+    tmp_path: Path,
+) -> None:
+    import unittest.mock
+
+    from agent_def_translator._common import (
+        GeneratedArtifact,
+        Target,
+        _write_artifacts_batch,
+    )
+
+    artifacts = [
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "src.toml",
+            output_path=tmp_path / "out0.sh",
+            content=b"#!/bin/sh\necho new-0\n",
+            mode=0o755,
+        ),
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "src.toml",
+            output_path=tmp_path / "out1.sh",
+            content=b"#!/bin/sh\necho new-1\n",
+            mode=0o755,
+        ),
+    ]
+    for i, artifact in enumerate(artifacts):
+        artifact.output_path.write_bytes(
+            f"#!/bin/sh\necho old-{i}\n".encode(),
+        )
+
+    original_replace = Path.replace
+
+    def flaky_replace(self: Path, target: Path | str) -> Path:
+        target_path = Path(target)
+        if self.suffix == ".tmp" and target_path == artifacts[1].output_path:
+            raise OSError("disk full")
+        return original_replace(self, target)
+
+    with (
+        unittest.mock.patch.object(Path, "replace", flaky_replace),
+        pytest.raises(OSError, match="disk full"),
+    ):
+        _write_artifacts_batch(artifacts)
+
+    assert artifacts[0].output_path.read_text(encoding="utf-8") == (
+        "#!/bin/sh\necho old-0\n"
+    )
+    assert artifacts[1].output_path.read_text(encoding="utf-8") == (
+        "#!/bin/sh\necho old-1\n"
+    )
+    assert sorted(path.suffix for path in tmp_path.iterdir()) == [".sh", ".sh"]
+
+
 def test_yaml_key_safe_and_unsafe() -> None:
     from agent_def_translator._common import _yaml_key
 
