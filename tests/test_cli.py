@@ -122,6 +122,44 @@ def test_cli_validate_renders_selected_targets(tmp_path: Path) -> None:
     assert main([*base_args, "--target", "claude"]) == 2
 
 
+def test_cli_validate_reports_non_utf8_prompt_append_file(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    definitions_dir = tmp_path / "agents"
+    definitions_dir.mkdir()
+    (definitions_dir / "sample.toml").write_text(
+        "\n".join(
+            [
+                'name = "sample"',
+                'description = "Sample"',
+                'instructions = "Base instructions"',
+                "",
+                "[targets.claude]",
+                'prompt_append_file = "appendix.md"',
+            ],
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (definitions_dir / "appendix.md").write_bytes(b"\x80not-utf8")
+
+    exit_code = main(
+        [
+            "subagent",
+            "validate",
+            "--definitions-dir",
+            str(definitions_dir),
+            "--target",
+            "claude",
+        ],
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "prompt_append_file must be valid UTF-8" in captured.err
+
+
 def test_cli_translate_subagent_resource(tmp_path: Path) -> None:
     definitions_dir = tmp_path / "agents"
     definitions_dir.mkdir()

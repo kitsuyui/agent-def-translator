@@ -615,6 +615,29 @@ def test_missing_prompt_append_file_fails(tmp_path: Path) -> None:
         render(definition, Target.CLAUDE)
 
 
+def test_non_utf8_prompt_append_file_fails(tmp_path: Path) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "bad"
+            description = "Bad"
+            instructions = "Base instructions"
+
+            [targets.claude]
+            prompt_append_file = "appendix.md"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "appendix.md").write_bytes(b"\x80not-utf8")
+    definition = load_definition(spec, root_dir=tmp_path)
+
+    with pytest.raises(DefinitionError, match="must be valid UTF-8"):
+        render(definition, Target.CLAUDE)
+
+
 @pytest.mark.parametrize(
     "path_kind",
     ["absolute", "windows_absolute", "parent"],
