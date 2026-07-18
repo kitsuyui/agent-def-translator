@@ -352,7 +352,6 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
             tmp_path.unlink(missing_ok=True)
         raise
 
-
 def _swap_paths_atomic(left: Path, right: Path) -> None:
     left_bytes = os.fsencode(left)
     right_bytes = os.fsencode(right)
@@ -439,6 +438,41 @@ def _write_artifacts_batch_via_output_dir_snapshot(
             shutil.rmtree(staged_root, ignore_errors=True)
 
 
+def _backup_output_path(output_path: Path) -> Path:
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        dir=output_path.parent,
+        suffix=".bak",
+    ) as f:
+        backup_path = Path(f.name)
+    output_path.replace(backup_path)
+    return backup_path
+
+
+def _rollback_artifacts_batch(
+    artifacts: list[GeneratedArtifact],
+    backup_paths: list[Path | None],
+    replaced_outputs: list[bool],
+    tmp_paths: list[Path | None],
+) -> None:
+    for artifact, backup, replaced in zip(
+        reversed(artifacts),
+        reversed(backup_paths),
+        reversed(replaced_outputs),
+        strict=True,
+    ):
+        if backup is None:
+            if replaced:
+                artifact.output_path.unlink(missing_ok=True)
+            continue
+        if replaced:
+            artifact.output_path.unlink(missing_ok=True)
+        backup.replace(artifact.output_path)
+    for tmp in tmp_paths:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
+
+
 @contextlib.contextmanager
 def _output_dir_write_lock(output_dir: Path) -> Generator[None, None, None]:
     """Hold an exclusive cross-process write lock on output_dir.
@@ -482,6 +516,8 @@ def _write_artifacts_batch(
     for artifact in artifacts:
         artifact.output_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_paths: list[Path | None] = [None] * len(artifacts)
+    backup_paths: list[Path | None] = [None] * len(artifacts)
+    replaced_outputs: list[bool] = [False] * len(artifacts)
     try:
         for i, artifact in enumerate(artifacts):
             content = (
@@ -499,13 +535,24 @@ def _write_artifacts_batch(
         for i, artifact in enumerate(artifacts):
             tmp = tmp_paths[i]
             if tmp is not None:
+                if artifact.output_path.exists():
+                    backup_paths[i] = _backup_output_path(
+                        artifact.output_path,
+                    )
                 _chmod_artifact(artifact, path=tmp)
                 tmp.replace(artifact.output_path)
                 tmp_paths[i] = None
+                replaced_outputs[i] = True
+        for backup in backup_paths:
+            if backup is not None:
+                backup.unlink(missing_ok=True)
     except BaseException:
-        for tmp in tmp_paths:
-            if tmp is not None:
-                tmp.unlink(missing_ok=True)
+        _rollback_artifacts_batch(
+            artifacts=artifacts,
+            backup_paths=backup_paths,
+            replaced_outputs=replaced_outputs,
+            tmp_paths=tmp_paths,
+        )
         raise
 
 

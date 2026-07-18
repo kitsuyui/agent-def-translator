@@ -217,6 +217,12 @@ def _compose_prompt(definition: AgentDefinition, target: Target) -> str:
                 f"{file_path}"
             )
             raise DefinitionError(msg) from exc
+        except UnicodeDecodeError as exc:
+            msg = (
+                f"{definition.source_path}: prompt_append_file must be valid "
+                f"UTF-8: {file_path}"
+            )
+            raise DefinitionError(msg) from exc
     if append:
         prompt = f"{prompt}\n\n{append.strip()}"
     return prompt

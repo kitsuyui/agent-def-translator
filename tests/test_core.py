@@ -615,6 +615,29 @@ def test_missing_prompt_append_file_fails(tmp_path: Path) -> None:
         render(definition, Target.CLAUDE)
 
 
+def test_non_utf8_prompt_append_file_fails(tmp_path: Path) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "bad"
+            description = "Bad"
+            instructions = "Base instructions"
+
+            [targets.claude]
+            prompt_append_file = "appendix.md"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "appendix.md").write_bytes(b"\x80not-utf8")
+    definition = load_definition(spec, root_dir=tmp_path)
+
+    with pytest.raises(DefinitionError, match="must be valid UTF-8"):
+        render(definition, Target.CLAUDE)
+
+
 @pytest.mark.parametrize(
     "path_kind",
     ["absolute", "windows_absolute", "parent"],
@@ -1809,6 +1832,61 @@ def test_write_artifacts_batch_output_dir_swap_failure_keeps_old_tree(
     assert extra.read_text(encoding="utf-8") == "keep me\n"
     assert not (output_dir / "claude").exists()
     assert not list(tmp_path.glob(".generated*.staging"))
+
+
+def test_write_artifacts_batch_replace_failure_restores_original_outputs(
+    tmp_path: Path,
+) -> None:
+    import unittest.mock
+
+    from agent_def_translator._common import (
+        GeneratedArtifact,
+        Target,
+        _write_artifacts_batch,
+    )
+
+    artifacts = [
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "src.toml",
+            output_path=tmp_path / "out0.sh",
+            content=b"#!/bin/sh\necho new-0\n",
+            mode=0o755,
+        ),
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "src.toml",
+            output_path=tmp_path / "out1.sh",
+            content=b"#!/bin/sh\necho new-1\n",
+            mode=0o755,
+        ),
+    ]
+    for i, artifact in enumerate(artifacts):
+        artifact.output_path.write_bytes(
+            f"#!/bin/sh\necho old-{i}\n".encode(),
+        )
+
+    original_replace = Path.replace
+
+    def flaky_replace(self: Path, target: Path | str) -> Path:
+        target_path = Path(target)
+        if self.suffix == ".tmp" and target_path == artifacts[1].output_path:
+            raise OSError("disk full")
+        return original_replace(self, target)
+
+    with (
+        unittest.mock.patch.object(Path, "replace", flaky_replace),
+        pytest.raises(OSError, match="disk full"),
+    ):
+        _write_artifacts_batch(artifacts)
+
+    assert artifacts[0].output_path.read_text(encoding="utf-8") == (
+        "#!/bin/sh\necho old-0\n"
+    )
+    assert artifacts[1].output_path.read_text(encoding="utf-8") == (
+        "#!/bin/sh\necho old-1\n"
+    )
+    assert sorted(path.suffix for path in tmp_path.iterdir()) == [".sh", ".sh"]
 
 
 def test_yaml_key_safe_and_unsafe() -> None:
