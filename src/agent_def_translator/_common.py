@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import contextlib
+import ctypes
+import errno
 import json
+import os
 import re
+import shutil
 import sys
 import tempfile
 from collections.abc import Generator, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from pathlib import Path, PureWindowsPath
 from typing import Any
@@ -30,6 +34,9 @@ MAX_BUNDLE_FILE_BYTES = 10 * 1024 * 1024
 DEPRECATION_REMOVAL_NOTICE = (
     "scheduled for removal no earlier than agent-def-translator 1.0.0"
 )
+_AT_FDCWD = -100
+_RENAME_EXCHANGE = 0x2
+_libc = ctypes.CDLL(None, use_errno=True)
 
 
 class DefinitionError(ValueError):
@@ -346,14 +353,100 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
         raise
 
 
+def _swap_paths_atomic(left: Path, right: Path) -> None:
+    left_bytes = os.fsencode(left)
+    right_bytes = os.fsencode(right)
+    if sys.platform.startswith("linux"):
+        renameat2 = getattr(_libc, "renameat2", None)
+        if renameat2 is None:
+            raise OSError(
+                errno.ENOTSUP,
+                "atomic directory swap is not supported on this platform",
+            )
+        renameat2.argtypes = [
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            ctypes.c_uint,
+        ]
+        renameat2.restype = ctypes.c_int
+        result = renameat2(
+            _AT_FDCWD,
+            left_bytes,
+            _AT_FDCWD,
+            right_bytes,
+            _RENAME_EXCHANGE,
+        )
+    elif sys.platform == "darwin":
+        renamex_np = getattr(_libc, "renamex_np", None)
+        if renamex_np is None:
+            raise OSError(
+                errno.ENOTSUP,
+                "atomic directory swap is not supported on this platform",
+            )
+        renamex_np.argtypes = [
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            ctypes.c_uint,
+        ]
+        renamex_np.restype = ctypes.c_int
+        result = renamex_np(left_bytes, right_bytes, _RENAME_EXCHANGE)
+    else:
+        raise OSError(
+            errno.ENOTSUP,
+            "atomic directory swap is not supported on this platform",
+        )
+    if result != 0:
+        err = ctypes.get_errno()
+        raise OSError(err, os.strerror(err), str(left))
+
+
+def _write_artifacts_batch_via_output_dir_snapshot(
+    artifacts: list[GeneratedArtifact],
+    output_dir: Path,
+) -> None:
+    staged_root = Path(
+        tempfile.mkdtemp(
+            dir=output_dir.parent,
+            prefix=f".{output_dir.name}.",
+            suffix=".staging",
+        ),
+    )
+    swapped = False
+    try:
+        if output_dir.exists():
+            shutil.copytree(output_dir, staged_root, dirs_exist_ok=True)
+        staged_artifacts = [
+            replace(
+                artifact,
+                output_path=staged_root
+                / artifact.output_path.relative_to(output_dir),
+            )
+            for artifact in artifacts
+        ]
+        _write_artifacts_batch(staged_artifacts)
+        if not output_dir.exists():
+            output_dir.mkdir(parents=True, exist_ok=True)
+        _swap_paths_atomic(staged_root, output_dir)
+        swapped = True
+        shutil.rmtree(staged_root)
+    except ValueError as exc:
+        msg = "artifact output_path must stay within output_dir"
+        raise OSError(msg) from exc
+    finally:
+        if not swapped:
+            shutil.rmtree(staged_root, ignore_errors=True)
+
+
 @contextlib.contextmanager
 def _output_dir_write_lock(output_dir: Path) -> Generator[None, None, None]:
     """Hold an exclusive cross-process write lock on output_dir.
 
     Uses fcntl.flock on POSIX. A no-op on platforms without fcntl (Windows).
     """
-    output_dir.mkdir(parents=True, exist_ok=True)
-    lock_path = output_dir / ".translate.lock"
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = output_dir.parent / f".{output_dir.name}.translate.lock"
     if _fcntl is None:  # pragma: no cover
         yield
         return
@@ -381,7 +474,10 @@ def _write_artifacts_batch(
     """
     if output_dir is not None:
         with _output_dir_write_lock(output_dir):
-            _write_artifacts_batch(artifacts)
+            _write_artifacts_batch_via_output_dir_snapshot(
+                artifacts,
+                output_dir,
+            )
         return
     for artifact in artifacts:
         artifact.output_path.parent.mkdir(parents=True, exist_ok=True)
