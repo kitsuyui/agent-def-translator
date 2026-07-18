@@ -1750,6 +1750,90 @@ def test_write_artifacts_batch_chmod_failure_leaves_no_final_paths(
         )
 
 
+def test_write_artifacts_batch_output_dir_swap_preserves_unmanaged_files(
+    tmp_path: Path,
+) -> None:
+    from agent_def_translator._common import (
+        GeneratedArtifact,
+        Target,
+        _write_artifacts_batch,
+    )
+
+    output_dir = tmp_path / "generated"
+    unmanaged = output_dir / "notes.txt"
+    managed = output_dir / "codex" / "agents" / "sample.toml"
+    unmanaged.parent.mkdir(parents=True)
+    managed.parent.mkdir(parents=True)
+    unmanaged.write_text("keep me\n", encoding="utf-8")
+    managed.write_text("old = true\n", encoding="utf-8")
+
+    artifacts = [
+        GeneratedArtifact(
+            target=Target.CODEX,
+            source_path=tmp_path / "src.toml",
+            output_path=managed,
+            content="new = true\n",
+        ),
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "src.toml",
+            output_path=output_dir / "claude" / "agents" / "sample.md",
+            content="# generated\n",
+        ),
+    ]
+
+    _write_artifacts_batch(artifacts, output_dir=output_dir)
+
+    assert unmanaged.read_text(encoding="utf-8") == "keep me\n"
+    assert managed.read_text(encoding="utf-8") == "new = true\n"
+    assert (
+        output_dir / "claude" / "agents" / "sample.md"
+    ).read_text(encoding="utf-8") == "# generated\n"
+
+
+def test_write_artifacts_batch_output_dir_swap_failure_keeps_old_tree(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_def_translator import _common
+    from agent_def_translator._common import GeneratedArtifact, Target
+
+    output_dir = tmp_path / "generated"
+    managed = output_dir / "codex" / "agents" / "sample.toml"
+    extra = output_dir / "notes.txt"
+    managed.parent.mkdir(parents=True)
+    managed.write_text("old = true\n", encoding="utf-8")
+    extra.write_text("keep me\n", encoding="utf-8")
+
+    artifacts = [
+        GeneratedArtifact(
+            target=Target.CODEX,
+            source_path=tmp_path / "src.toml",
+            output_path=managed,
+            content="new = true\n",
+        ),
+        GeneratedArtifact(
+            target=Target.CLAUDE,
+            source_path=tmp_path / "src.toml",
+            output_path=output_dir / "claude" / "agents" / "sample.md",
+            content="# generated\n",
+        ),
+    ]
+
+    def fail_swap(_left: Path, _right: Path) -> None:
+        raise OSError("swap unavailable")
+
+    monkeypatch.setattr(_common, "_swap_paths_atomic", fail_swap)
+
+    with pytest.raises(OSError, match="swap unavailable"):
+        _common._write_artifacts_batch(artifacts, output_dir=output_dir)
+
+    assert managed.read_text(encoding="utf-8") == "old = true\n"
+    assert extra.read_text(encoding="utf-8") == "keep me\n"
+    assert not (output_dir / "claude").exists()
+    assert not list(tmp_path.glob(".generated*.staging"))
+
+
 def test_write_artifacts_batch_replace_failure_restores_original_outputs(
     tmp_path: Path,
 ) -> None:
