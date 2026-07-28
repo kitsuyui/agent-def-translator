@@ -38,6 +38,15 @@ _AT_FDCWD = -100
 _RENAME_EXCHANGE = 0x2
 _libc = ctypes.CDLL(None, use_errno=True)
 
+# `schema_version` is the machine-readable generation marker for canonical
+# definition files. It is optional and defaults to CURRENT_SCHEMA_VERSION so
+# existing 0.x definitions keep loading unchanged. Bump
+# CURRENT_SCHEMA_VERSION and add the new value to SUPPORTED_SCHEMA_VERSIONS
+# when a canonical format change needs an explicit migration boundary.
+SCHEMA_VERSION_FIELD = "schema_version"
+CURRENT_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSIONS = frozenset({1})
+
 
 class DefinitionError(ValueError):
     """Raised when a definition cannot be translated."""
@@ -48,6 +57,25 @@ def _load_toml(path: Path) -> dict[str, Any]:
         return tomllib.loads(path.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as e:
         raise DefinitionError(f"{path}: {e}") from e
+
+
+def _load_schema_version(path: Path, payload: dict[str, Any]) -> int:
+    value = payload.get(SCHEMA_VERSION_FIELD, CURRENT_SCHEMA_VERSION)
+    if not isinstance(value, int) or isinstance(value, bool):
+        msg = f"{path}: schema_version must be an integer"
+        raise DefinitionError(msg)
+    if value not in SUPPORTED_SCHEMA_VERSIONS:
+        supported = ", ".join(
+            str(version) for version in sorted(SUPPORTED_SCHEMA_VERSIONS)
+        )
+        msg = (
+            f"{path}: schema_version {value} is not supported by this "
+            f"agent-def-translator version (supported: {supported}). "
+            "Upgrade agent-def-translator, or migrate this definition to a "
+            "supported schema_version, before loading it."
+        )
+        raise DefinitionError(msg)
+    return value
 
 
 class Target(Enum):
@@ -351,6 +379,7 @@ def _write_artifact(artifact: GeneratedArtifact) -> None:
         if tmp_path is not None:
             tmp_path.unlink(missing_ok=True)
         raise
+
 
 def _swap_paths_atomic(left: Path, right: Path) -> None:
     left_bytes = os.fsencode(left)

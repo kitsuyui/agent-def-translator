@@ -15,6 +15,7 @@ from agent_def_translator._common import (
     _is_string_list,
     _is_yaml_value,
     _iter_bundle_files,
+    _load_schema_version,
     _load_target_configs,
     _load_toml,
     _resolve_relative_path,
@@ -39,6 +40,7 @@ SKILL_ROOT_FIELDS = frozenset(
         "disable_model_invocation",
         "context",
         "targets",
+        "schema_version",
     },
 )
 SKILL_TARGET_CONTROL_FIELDS = frozenset({"enabled"})
@@ -118,6 +120,7 @@ class SkillDefinition:
     source_path: Path
     root_dir: Path
     bundle_dir: Path | None
+    schema_version: int
 
 
 def load_skill_definition(
@@ -127,6 +130,7 @@ def load_skill_definition(
 ) -> SkillDefinition:
     root = root_dir or path.parent
     payload = _load_toml(path)
+    schema_version = _load_schema_version(path, payload)
     unknown = sorted(set(payload) - SKILL_ROOT_FIELDS)
     if unknown:
         fields = ", ".join(unknown)
@@ -147,7 +151,14 @@ def load_skill_definition(
     config = {
         key: value
         for key, value in payload.items()
-        if key not in {"name", "description", "instructions", "targets"}
+        if key
+        not in {
+            "name",
+            "description",
+            "instructions",
+            "targets",
+            "schema_version",
+        }
     }
     _validate_skill_config(path, config)
     bundle_dir = _skill_bundle_dir(path, root, name, config)
@@ -168,6 +179,7 @@ def load_skill_definition(
         source_path=path,
         root_dir=root,
         bundle_dir=bundle_dir,
+        schema_version=schema_version,
     )
 
 
@@ -280,7 +292,9 @@ def check_skill_drift(
 
 
 def skill_output_path(
-    output_dir: Path, name: str, target: Target | str,
+    output_dir: Path,
+    name: str,
+    target: Target | str,
 ) -> Path:
     target = Target.parse(target)
     if target == Target.CLAUDE:

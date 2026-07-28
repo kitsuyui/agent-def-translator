@@ -13,6 +13,7 @@ from agent_def_translator._common import (
     _artifact_has_drift,
     _is_string_dict,
     _is_string_list,
+    _load_schema_version,
     _load_target_configs,
     _load_toml,
     _write_artifacts_batch,
@@ -33,6 +34,7 @@ MCP_ROOT_FIELDS = frozenset(
         "tools",
         "bearer_token_env_var",
         "targets",
+        "schema_version",
     },
 )
 MCP_TARGET_CONTROL_FIELDS = frozenset({"enabled", "server_name"})
@@ -60,6 +62,7 @@ class McpConfigDefinition:
     targets: dict[Target, dict[str, Any]]
     source_path: Path
     root_dir: Path
+    schema_version: int
 
 
 def load_mcp_config_definition(
@@ -69,6 +72,7 @@ def load_mcp_config_definition(
 ) -> McpConfigDefinition:
     root = root_dir or path.parent
     payload = _load_toml(path)
+    schema_version = _load_schema_version(path, payload)
     unknown = sorted(set(payload) - MCP_ROOT_FIELDS)
     if unknown:
         fields = ", ".join(unknown)
@@ -98,7 +102,14 @@ def load_mcp_config_definition(
     config = {
         key: value
         for key, value in payload.items()
-        if key not in {"name", "description", "transport", "targets"}
+        if key
+        not in {
+            "name",
+            "description",
+            "transport",
+            "targets",
+            "schema_version",
+        }
     }
     _validate_mcp_transport_shape(path, transport, config)
     _validate_mcp_config(path, config)
@@ -117,6 +128,7 @@ def load_mcp_config_definition(
         targets=targets,
         source_path=path,
         root_dir=root,
+        schema_version=schema_version,
     )
 
 

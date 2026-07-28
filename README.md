@@ -29,6 +29,14 @@ This project is currently alpha software. The core translation model is usable,
 but the canonical definition shape and target-specific output formats may change
 before a stable release.
 
+Canonical definition files (subagent, skill, MCP config, and plugin) accept an
+optional `schema_version` integer field. It defaults to the current schema
+version, so existing 0.x definitions keep loading unchanged. A definition
+whose `schema_version` this version of `agent-def-translator` does not
+support fails to load with an explicit migration error instead of a generic
+parse or unknown-field failure. See `docs/release.md` for how definition-format
+changes are called out in release notes.
+
 ## Quick Start
 
 Create a definition directory:
