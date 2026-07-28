@@ -1786,9 +1786,9 @@ def test_write_artifacts_batch_output_dir_swap_preserves_unmanaged_files(
 
     assert unmanaged.read_text(encoding="utf-8") == "keep me\n"
     assert managed.read_text(encoding="utf-8") == "new = true\n"
-    assert (
-        output_dir / "claude" / "agents" / "sample.md"
-    ).read_text(encoding="utf-8") == "# generated\n"
+    assert (output_dir / "claude" / "agents" / "sample.md").read_text(
+        encoding="utf-8",
+    ) == "# generated\n"
 
 
 def test_write_artifacts_batch_output_dir_swap_failure_keeps_old_tree(
@@ -2214,3 +2214,108 @@ def test_write_artifacts_batch_concurrent_writers_serialize(
         ["start:A", "end:A", "start:B", "end:B"],
         ["start:B", "end:B", "start:A", "end:A"],
     ]
+
+
+def test_load_definition_defaults_schema_version(tmp_path: Path) -> None:
+    spec = write_sample(tmp_path)
+    definition = load_definition(spec, root_dir=tmp_path)
+    assert definition.schema_version == common.CURRENT_SCHEMA_VERSION
+
+
+def test_load_definition_accepts_explicit_supported_schema_version(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "sample.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            schema_version = 1
+            name = "sample"
+            description = "Sample agent"
+            instructions = "Base instructions"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    definition = load_definition(spec, root_dir=tmp_path)
+    assert definition.schema_version == 1
+
+
+def test_load_definition_rejects_unsupported_schema_version(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "sample.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            schema_version = 99
+            name = "sample"
+            description = "Sample agent"
+            instructions = "Base instructions"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(DefinitionError, match="schema_version 99"):
+        load_definition(spec, root_dir=tmp_path)
+
+
+def test_load_definition_rejects_non_integer_schema_version(
+    tmp_path: Path,
+) -> None:
+    spec = tmp_path / "sample.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            schema_version = "1"
+            name = "sample"
+            description = "Sample agent"
+            instructions = "Base instructions"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        DefinitionError,
+        match="schema_version must be an integer",
+    ):
+        load_definition(spec, root_dir=tmp_path)
+
+
+def test_load_skill_definition_rejects_unsupported_schema_version(
+    tmp_path: Path,
+) -> None:
+    spec = write_skill_sample(tmp_path)
+    spec.write_text(
+        "schema_version = 99\n" + spec.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    with pytest.raises(DefinitionError, match="schema_version 99"):
+        load_skill_definition(spec, root_dir=tmp_path / "skills")
+
+
+def test_load_mcp_config_definition_rejects_unsupported_schema_version(
+    tmp_path: Path,
+) -> None:
+    spec = write_mcp_sample(tmp_path)
+    spec.write_text(
+        "schema_version = 99\n" + spec.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    with pytest.raises(DefinitionError, match="schema_version 99"):
+        load_mcp_config_definition(spec, root_dir=tmp_path / "mcp")
+
+
+def test_load_plugin_definition_rejects_unsupported_schema_version(
+    tmp_path: Path,
+) -> None:
+    spec = write_plugin_sample(tmp_path)
+    spec.write_text(
+        "schema_version = 99\n" + spec.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    with pytest.raises(DefinitionError, match="schema_version 99"):
+        load_plugin_definition(spec, root_dir=tmp_path / "plugins")

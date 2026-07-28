@@ -14,6 +14,10 @@ details.
 - Make `Target` a plain `Enum` and accept explicit target-name strings at the
   public Python API boundary.
 
+### Added
+
+- Optional `schema_version` field on canonical subagent, skill, MCP config, and plugin definitions, giving 0.x format changes an explicit migration boundary instead of generic parse errors (PR_LINK_PLACEHOLDER)
+
 ## [0.1.2] - 2026-05-06
 
 ### Changed

@@ -11,6 +11,7 @@ from agent_def_translator._common import (
     GeneratedArtifact,
     Target,
     _artifact_has_drift,
+    _load_schema_version,
     _load_target_configs,
     _load_toml,
     _resolve_relative_path,
@@ -23,7 +24,9 @@ from agent_def_translator._common import (
 PROMPT_FIELDS = frozenset(
     {"prompt_override", "prompt_append", "prompt_append_file"},
 )
-ROOT_FIELDS = frozenset({"name", "description", "instructions", "targets"})
+ROOT_FIELDS = frozenset(
+    {"name", "description", "instructions", "targets", "schema_version"},
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +37,7 @@ class AgentDefinition:
     targets: dict[Target, dict[str, Any]]
     source_path: Path
     root_dir: Path
+    schema_version: int
 
 
 def load_definition(
@@ -43,6 +47,7 @@ def load_definition(
 ) -> AgentDefinition:
     root = root_dir or path.parent
     payload = _load_toml(path)
+    schema_version = _load_schema_version(path, payload)
     unknown = sorted(set(payload) - ROOT_FIELDS - LEGACY_TARGET_FIELDS)
     if unknown:
         fields = ", ".join(unknown)
@@ -70,6 +75,7 @@ def load_definition(
         targets=targets,
         source_path=path,
         root_dir=root,
+        schema_version=schema_version,
     )
 
 

@@ -16,6 +16,7 @@ from agent_def_translator._common import (
     _is_json_value,
     _is_string_list,
     _iter_bundle_files,
+    _load_schema_version,
     _load_target_configs,
     _load_toml,
     _resolve_relative_path,
@@ -41,6 +42,7 @@ PLUGIN_ROOT_FIELDS = frozenset(
         "interface",
         "marketplace",
         "targets",
+        "schema_version",
     },
 )
 PLUGIN_COMPONENT_FIELDS = frozenset(
@@ -104,6 +106,7 @@ class PluginDefinition:
     targets: dict[Target, dict[str, Any]]
     source_path: Path
     root_dir: Path
+    schema_version: int
 
 
 def load_plugin_definition(
@@ -113,6 +116,7 @@ def load_plugin_definition(
 ) -> PluginDefinition:
     root = root_dir or path.parent
     payload = _load_toml(path)
+    schema_version = _load_schema_version(path, payload)
     unknown = sorted(set(payload) - PLUGIN_ROOT_FIELDS)
     if unknown:
         fields = ", ".join(unknown)
@@ -135,7 +139,14 @@ def load_plugin_definition(
     config = {
         key: value
         for key, value in payload.items()
-        if key not in {"name", "description", "version", "targets"}
+        if key
+        not in {
+            "name",
+            "description",
+            "version",
+            "targets",
+            "schema_version",
+        }
     }
     _validate_plugin_config(path, config)
     targets = _load_target_configs(path, payload)
@@ -154,6 +165,7 @@ def load_plugin_definition(
         targets=targets,
         source_path=path,
         root_dir=root,
+        schema_version=schema_version,
     )
 
 
