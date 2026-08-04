@@ -114,7 +114,7 @@ markers = [
 
 [tool.poe.tasks]
 test = "pytest"
-coverage-xml = "pytest --cov=agent_def_translator --doctest-modules --cov-report=xml"
+coverage-xml = "pytest --cov=agent_def_translator --doctest-modules --cov-report=xml --run-e2e -m 'not live'"
 format = "ruff format src/agent_def_translator tests"
 e2e = "pytest -m 'e2e and not live' --run-e2e"
 e2e-live = "pytest -m 'live and not model_live' --run-e2e --run-live"

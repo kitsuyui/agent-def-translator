@@ -217,7 +217,12 @@ You can also run the checks manually:
 ```sh
 uv run poe check
 uv run poe test
+uv run poe coverage-xml
 ```
+
+`uv run poe coverage-xml` includes the deterministic `e2e` smoke test in the
+reported coverage path while still leaving the opt-in `live` and
+`model_live` checks outside the published badge and octocov gates.
 
 CI still runs the full matrix (see `.github/workflows/`); the hooks only bring that
 feedback earlier on your machine.

@@ -28,6 +28,10 @@ Run coverage:
 uv run poe coverage-xml
 ```
 
+This coverage task includes the deterministic `e2e` smoke test so the reported
+coverage and octocov badge exercise the installed-CLI and generated-artifact
+path. It still excludes the opt-in `live` and `model_live` checks.
+
 ## Coverage Gates
 
 The `octocov` workflow treats the collected metrics as CI gates, not just PR
@@ -38,9 +42,10 @@ comment data:
 - test execution time in GitHub Actions must stay under 2 minutes
 
 The coverage badge in the README is generated from the same octocov reporting
-path. The full Python version matrix still runs in `python-test.yml`; octocov
-uses its dedicated Python 3.14 job as the reporting source for the badge and
-threshold checks.
+path. That reporting path runs the default pytest suite plus the deterministic
+`e2e` smoke test. The full Python version matrix still runs in `python-test.yml`;
+octocov uses its dedicated Python 3.14 job as the reporting source for the
+badge and threshold checks.
 
 ## Test Selection
 
