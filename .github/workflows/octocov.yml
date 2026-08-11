@@ -41,7 +41,7 @@ jobs:
           uv sync
 
       - name: Test
-        run: uv run poe test
+        run: uv run poe test -- --run-e2e
 
       - name: Coverage
         run: uv run poe coverage-xml
