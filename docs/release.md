@@ -56,7 +56,11 @@ the final PyPI artifact.
 3. Install the TestPyPI artifact in a clean environment and run a smoke check:
 
    ```bash
-   uvx --from agent-def-translator agent-def-translator --help
+   uvx --isolated \
+     --default-index https://test.pypi.org/simple \
+     --index https://pypi.org/simple \
+     --from agent-def-translator \
+     agent-def-translator --help
    ```
 
 4. If the artifact is correct, edit the GitHub Release and clear the prerelease
