@@ -13,6 +13,8 @@ details.
 
 - Make `Target` a plain `Enum` and accept explicit target-name strings at the
   public Python API boundary.
+- Fail package builds early when Git tag metadata is unavailable instead of
+  reusing a published fallback version.
 
 ### Added
 

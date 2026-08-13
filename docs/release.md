@@ -72,11 +72,15 @@ upload for an already published version should fail loudly at the package index.
 
 ## Publish Failure Notes
 
-`setuptools-scm` uses `fallback_version = "0.1.0"` when Git metadata is not
-available. That value has already been published. If a release build falls back
-to it, the upload should fail with a version-conflict error. Treat that as a
-signal to inspect the checkout and tag visibility for the release workflow
-before retrying.
+Release builds must run from a checkout that still has the release tag
+available to `setuptools-scm`. This repository intentionally does not define a
+`fallback_version`. If Git metadata or tag refs are missing, `uv build` fails
+early with a `setuptools-scm was unable to detect version` error instead of
+silently producing a reused package version.
+
+Treat that failure as a checkout-integrity problem. Inspect the release
+workflow's tag visibility before retrying the release rather than debugging it
+as a PyPI credential or upload issue.
 
 The current workflow uses PyPI API tokens. Moving to Trusted Publishing, adding
 artifact attestations, or changing release-note generation should be handled as
