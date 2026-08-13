@@ -48,7 +48,6 @@ where = ["src"]
 write_to = "src/agent_def_translator/_version.py"
 version_scheme = "only-version"
 local_scheme = "no-local-version"
-fallback_version = "0.1.0"
 
 [dependency-groups]
 dev = [
