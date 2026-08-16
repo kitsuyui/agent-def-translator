@@ -220,9 +220,13 @@ uv run poe test
 uv run poe coverage-xml
 ```
 
-`uv run poe coverage-xml` includes the deterministic `e2e` smoke test in the
-reported coverage path while still leaving the opt-in `live` and
-`model_live` checks outside the published badge and octocov gates.
+`uv run poe coverage-xml` now runs the deterministic `e2e` smoke test in the
+same job that produces the coverage badge, so a regression in the
+installed-CLI and generated-artifact path fails that job. The `e2e` smoke
+test invokes the CLI as a subprocess, so it does not raise the reported
+line-coverage percentage; only the job's pass/fail status reflects it. The
+opt-in `live` and `model_live` checks stay outside both the coverage job and
+the published badge/gates.
 
 CI still runs the full matrix (see `.github/workflows/`); the hooks only bring that
 feedback earlier on your machine.
