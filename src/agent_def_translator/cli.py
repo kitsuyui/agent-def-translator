@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any
 
 from agent_def_translator._common import DEPRECATION_REMOVAL_NOTICE
 from agent_def_translator._version import __version__
@@ -22,6 +23,52 @@ from agent_def_translator.core import (
     validate_plugin_definitions,
     validate_skill_definitions,
 )
+
+
+class _DeprecatedHelpAction(argparse.Action):
+    """Like the default help action, but warns about deprecation first.
+
+    argparse handles ``--help`` inside ``parse_args()`` and exits before
+    ``main()`` ever calls ``_warn_deprecated_command()``, so deprecated
+    entrypoints would otherwise show plain usage text with no removal
+    horizon or replacement guidance.
+    """
+
+    def __init__(
+        self,
+        option_strings: list[str],
+        replacement: str = "",
+        **kwargs: Any,
+    ) -> None:
+        kwargs.setdefault("dest", argparse.SUPPRESS)
+        kwargs.setdefault("default", argparse.SUPPRESS)
+        kwargs["nargs"] = 0
+        super().__init__(option_strings=option_strings, **kwargs)
+        self._replacement = replacement
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        _namespace: argparse.Namespace,
+        _values: object,
+        _option_string: str | None = None,
+    ) -> None:
+        _print_deprecation_warning(self._replacement)
+        parser.print_help()
+        parser.exit()
+
+
+def _add_deprecated_help(
+    parser: argparse.ArgumentParser,
+    replacement: str,
+) -> None:
+    parser.add_argument(
+        "-h",
+        "--help",
+        action=_DeprecatedHelpAction,
+        replacement=replacement,
+        help="show this help message and exit",
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -61,7 +108,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     _add_definition_args(subagent_diff, output=True)
 
-    agent = subparsers.add_parser("agent")
+    agent = subparsers.add_parser("agent", add_help=False)
+    _add_deprecated_help(agent, "subagent")
     agent_subparsers = agent.add_subparsers(
         dest="resource_command",
         required=True,
@@ -69,17 +117,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     agent_validate = agent_subparsers.add_parser(
         "validate",
         help="Deprecated alias for subagent validate.",
+        add_help=False,
     )
+    _add_deprecated_help(agent_validate, "subagent validate")
     _add_definition_args(agent_validate, output=False)
     agent_translate = agent_subparsers.add_parser(
         "translate",
         help="Deprecated alias for subagent translate.",
+        add_help=False,
     )
+    _add_deprecated_help(agent_translate, "subagent translate")
     _add_definition_args(agent_translate, output=True)
     agent_diff = agent_subparsers.add_parser(
         "diff",
         help="Deprecated alias for subagent diff.",
+        add_help=False,
     )
+    _add_deprecated_help(agent_diff, "subagent diff")
     _add_definition_args(agent_diff, output=True)
 
     skill = subparsers.add_parser(
@@ -154,22 +208,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     _add_definition_args(plugin_diff, output=True)
 
-    validate = subparsers.add_parser("validate")
+    validate = subparsers.add_parser("validate", add_help=False)
+    _add_deprecated_help(validate, "subagent validate")
     _add_definition_args(validate, output=False)
 
-    validate_agents = subparsers.add_parser("validate-agents")
+    validate_agents = subparsers.add_parser("validate-agents", add_help=False)
+    _add_deprecated_help(validate_agents, "subagent validate")
     _add_definition_args(validate_agents, output=False)
 
-    translate = subparsers.add_parser("translate")
+    translate = subparsers.add_parser("translate", add_help=False)
+    _add_deprecated_help(translate, "subagent translate")
     _add_definition_args(translate, output=True)
 
-    translate_agents = subparsers.add_parser("translate-agents")
+    translate_agents = subparsers.add_parser(
+        "translate-agents",
+        add_help=False,
+    )
+    _add_deprecated_help(translate_agents, "subagent translate")
     _add_definition_args(translate_agents, output=True)
 
-    diff = subparsers.add_parser("diff")
+    diff = subparsers.add_parser("diff", add_help=False)
+    _add_deprecated_help(diff, "subagent diff")
     _add_definition_args(diff, output=True)
 
-    diff_agents = subparsers.add_parser("diff-agents")
+    diff_agents = subparsers.add_parser("diff-agents", add_help=False)
+    _add_deprecated_help(diff_agents, "subagent diff")
     _add_definition_args(diff_agents, output=True)
 
     return parser.parse_args(argv)
@@ -245,6 +308,10 @@ def _warn_deprecated_command(
         replacement = f"subagent {command[1]}"
     if replacement is None:
         return
+    _print_deprecation_warning(replacement)
+
+
+def _print_deprecation_warning(replacement: str) -> None:
     print(
         f"warning: this command is deprecated and "
         f"{DEPRECATION_REMOVAL_NOTICE}; "
