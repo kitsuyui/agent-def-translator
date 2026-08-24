@@ -154,7 +154,13 @@ def test_cli_help_text_is_locked(
 
 
 _VERSION_OUTPUT_PATTERN = re.compile(
-    r"\Aagent-def-translator \d+\.\d+\.\d+(\.dev\d+)?\n\Z",
+    # setuptools_scm's fallback base version (used when a shallow CI
+    # checkout has no reachable tags) is the two-segment "0.1", not
+    # "0.1.0", so the segment count is not pinned here. The `+...`
+    # local-version suffix is tolerated too, even though
+    # `local_scheme = "no-local-version"` normally suppresses it, since
+    # that only applies once a tag has been found.
+    r"\Aagent-def-translator \d+(\.\d+)+(\.dev\d+)?(\+[0-9a-zA-Z.]+)?\n\Z",
 )
 
 
