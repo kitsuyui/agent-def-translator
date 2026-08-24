@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -33,6 +34,138 @@ def test_cli_help_shows_only_active_commands(
     for cmd in _DEPRECATED_COMMANDS:
         assert f"    {cmd}" not in help_text
     assert "Deprecated" not in help_text
+
+
+def _normalized_help(text: str) -> str:
+    # argparse wraps help text to the terminal width, so whitespace
+    # (not word order) is the only thing that varies across environments.
+    return " ".join(text.split())
+
+
+_TOP_LEVEL_HELP_TEXT = _normalized_help(
+    """
+    usage: agent-def-translator [-h] [--version]
+    {subagent,skill,mcp,plugin} ...
+
+    positional arguments:
+      {subagent,skill,mcp,plugin}
+        subagent            Work with subagent definition files.
+        skill               Work with skill definition files.
+        mcp                 Work with MCP config definition files.
+        plugin              Work with plugin bundle definition files.
+
+    options:
+      -h, --help            show this help message and exit
+      --version             show program's version number and exit
+    """,
+)
+
+_RESOURCE_HELP_TEXT = {
+    "subagent": _normalized_help(
+        """
+        usage: agent-def-translator subagent [-h]
+        {validate,translate,diff} ...
+
+        positional arguments:
+          {validate,translate,diff}
+            validate            Validate subagent definition TOML files.
+            translate           Generate platform-native subagent files.
+            diff                Check whether generated subagent files
+                                are up to date.
+
+        options:
+          -h, --help            show this help message and exit
+        """,
+    ),
+    "skill": _normalized_help(
+        """
+        usage: agent-def-translator skill [-h]
+        {translate,validate,diff} ...
+
+        positional arguments:
+          {translate,validate,diff}
+            translate           Generate platform-native skill files.
+            validate            Validate skill definition TOML files.
+            diff                Check whether generated skill files are
+                                up to date.
+
+        options:
+          -h, --help            show this help message and exit
+        """,
+    ),
+    "mcp": _normalized_help(
+        """
+        usage: agent-def-translator mcp [-h]
+        {validate,translate,diff} ...
+
+        positional arguments:
+          {validate,translate,diff}
+            validate            Validate MCP config definition TOML
+                                files.
+            translate           Generate platform-native MCP config
+                                files.
+            diff                Check whether generated MCP config
+                                files are up to date.
+
+        options:
+          -h, --help            show this help message and exit
+        """,
+    ),
+    "plugin": _normalized_help(
+        """
+        usage: agent-def-translator plugin [-h]
+        {validate,translate,diff} ...
+
+        positional arguments:
+          {validate,translate,diff}
+            validate            Validate plugin bundle definition TOML
+                                files.
+            translate           Generate platform-native plugin
+                                bundles.
+            diff                Check whether generated plugin bundles
+                                are up to date.
+
+        options:
+          -h, --help            show this help message and exit
+        """,
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("args", "expected"),
+    [
+        ((), _TOP_LEVEL_HELP_TEXT),
+        (("subagent",), _RESOURCE_HELP_TEXT["subagent"]),
+        (("skill",), _RESOURCE_HELP_TEXT["skill"]),
+        (("mcp",), _RESOURCE_HELP_TEXT["mcp"]),
+        (("plugin",), _RESOURCE_HELP_TEXT["plugin"]),
+    ],
+)
+def test_cli_help_text_is_locked(
+    capsys: pytest.CaptureFixture[str],
+    args: tuple[str, ...],
+    expected: str,
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main([*args, "--help"])
+    assert exc_info.value.code == 0
+    assert _normalized_help(capsys.readouterr().out) == expected
+
+
+_VERSION_OUTPUT_PATTERN = re.compile(
+    r"\Aagent-def-translator \d+\.\d+\.\d+(\.dev\d+)?\n\Z",
+)
+
+
+def test_cli_version_output_is_locked(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["--version"])
+    assert exc_info.value.code == 0
+    version_text = capsys.readouterr().out
+    assert _VERSION_OUTPUT_PATTERN.match(version_text), version_text
 
 
 def test_cli_subagent_validate_and_translate(tmp_path: Path) -> None:
