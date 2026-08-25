@@ -380,6 +380,40 @@ def test_cli_deprecated_subagent_aliases_warn(
     assert replacement in captured.err
 
 
+@pytest.mark.parametrize(
+    ("args", "replacement"),
+    [
+        (["validate", "--help"], "subagent validate"),
+        (["validate-agents", "--help"], "subagent validate"),
+        (["translate", "--help"], "subagent translate"),
+        (["translate-agents", "--help"], "subagent translate"),
+        (["diff", "--help"], "subagent diff"),
+        (["diff-agents", "--help"], "subagent diff"),
+        (["agent", "--help"], "subagent"),
+        (["agent", "validate", "--help"], "subagent validate"),
+        (["agent", "translate", "--help"], "subagent translate"),
+        (["agent", "diff", "--help"], "subagent diff"),
+    ],
+)
+def test_cli_deprecated_help_shows_deprecation_warning(
+    capsys: pytest.CaptureFixture[str],
+    args: list[str],
+    replacement: str,
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(args)
+    assert exc_info.value.code == 0
+
+    captured = capsys.readouterr()
+    assert "warning: this command is deprecated" in captured.err
+    assert "no earlier than agent-def-translator 1.0.0" in captured.err
+    assert f"use 'agent-def-translator {replacement}' instead." in (
+        captured.err
+    )
+    # The usual help text is still shown after the warning.
+    assert "usage: agent-def-translator" in captured.out
+
+
 def test_cli_skill_validate_translate_and_diff(tmp_path: Path) -> None:
     definitions_dir = tmp_path / "skills"
     definitions_dir.mkdir()
