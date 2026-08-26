@@ -9,6 +9,11 @@ details.
 
 ## [Unreleased]
 
+### Fixed
+
+- Allow `--target vscode` on the CLI, matching the compatibility alias
+  already accepted by `Target.parse()` and documented in definition files.
+
 ### Changed
 
 - Make `Target` a plain `Enum` and accept explicit target-name strings at the

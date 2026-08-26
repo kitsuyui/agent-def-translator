@@ -249,7 +249,7 @@ def _add_definition_args(
     parser.add_argument(
         "--target",
         action="append",
-        choices=[target.value for target in Target],
+        choices=[*(target.value for target in Target), "vscode"],
     )
 
 

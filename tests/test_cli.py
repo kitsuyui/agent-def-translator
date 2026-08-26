@@ -261,6 +261,44 @@ def test_cli_validate_renders_selected_targets(tmp_path: Path) -> None:
     assert main([*base_args, "--target", "claude"]) == 2
 
 
+def test_cli_accepts_vscode_as_compatibility_alias_for_target(
+    tmp_path: Path,
+) -> None:
+    definitions_dir = tmp_path / "agents"
+    definitions_dir.mkdir()
+    (definitions_dir / "sample.toml").write_text(
+        "\n".join(
+            [
+                'name = "sample"',
+                'description = "Sample"',
+                'instructions = "Base instructions"',
+                "",
+                "[targets.copilot]",
+            ],
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    output_dir = tmp_path / "generated"
+
+    assert (
+        main(
+            [
+                "subagent",
+                "translate",
+                "--definitions-dir",
+                str(definitions_dir),
+                "--output-dir",
+                str(output_dir),
+                "--target",
+                "vscode",
+            ],
+        )
+        == 0
+    )
+    assert (output_dir / "copilot" / "agents" / "sample.agent.md").exists()
+
+
 def test_cli_validate_reports_non_utf8_prompt_append_file(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
