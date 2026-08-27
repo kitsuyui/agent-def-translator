@@ -273,5 +273,6 @@ Supported targets are:
 - `copilot`
 
 `vscode` is accepted as a compatibility alias for `copilot` in definition
-files. It is not scheduled for removal in the current schema, but new
-definition files should prefer `copilot` for clarity.
+files and as a `--target` value on the CLI. It is not scheduled for removal
+in the current schema, but new definition files and command invocations
+should prefer `copilot` for clarity.
