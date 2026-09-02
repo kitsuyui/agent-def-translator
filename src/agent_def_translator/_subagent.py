@@ -14,6 +14,7 @@ from agent_def_translator._common import (
     _load_schema_version,
     _load_target_configs,
     _load_toml,
+    _output_dir_read_lock,
     _resolve_relative_path,
     _write_artifacts_batch,
     _write_toml_table,
@@ -151,11 +152,12 @@ def check_drift(
         targets=targets,
         write=False,
     )
-    return [
-        artifact.output_path
-        for artifact in artifacts
-        if _artifact_has_drift(artifact)
-    ]
+    with _output_dir_read_lock(output_dir):
+        return [
+            artifact.output_path
+            for artifact in artifacts
+            if _artifact_has_drift(artifact)
+        ]
 
 
 def output_path(output_dir: Path, name: str, target: Target | str) -> Path:
