@@ -502,19 +502,46 @@ def _rollback_artifacts_batch(
             tmp.unlink(missing_ok=True)
 
 
+def _output_dir_lock_path(output_dir: Path) -> Path:
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    return output_dir.parent / f".{output_dir.name}.translate.lock"
+
+
 @contextlib.contextmanager
 def _output_dir_write_lock(output_dir: Path) -> Generator[None, None, None]:
     """Hold an exclusive cross-process write lock on output_dir.
 
     Uses fcntl.flock on POSIX. A no-op on platforms without fcntl (Windows).
     """
-    output_dir.parent.mkdir(parents=True, exist_ok=True)
-    lock_path = output_dir.parent / f".{output_dir.name}.translate.lock"
+    lock_path = _output_dir_lock_path(output_dir)
     if _fcntl is None:  # pragma: no cover
         yield
         return
     with lock_path.open("w") as lf:
         _fcntl.flock(lf, _fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            _fcntl.flock(lf, _fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
+def _output_dir_read_lock(output_dir: Path) -> Generator[None, None, None]:
+    """Hold a shared cross-process read lock on output_dir.
+
+    Concurrent drift checks can hold this lock together, but it blocks
+    while a writer holds the exclusive lock from `_output_dir_write_lock`,
+    so a drift check observes the output tree only before a write starts
+    or after it has fully landed (writers swap in the whole tree
+    atomically), never a partially updated mix of old and new files.
+    Uses fcntl.flock on POSIX. A no-op on platforms without fcntl (Windows).
+    """
+    lock_path = _output_dir_lock_path(output_dir)
+    if _fcntl is None:  # pragma: no cover
+        yield
+        return
+    with lock_path.open("w") as lf:
+        _fcntl.flock(lf, _fcntl.LOCK_SH)
         try:
             yield
         finally:

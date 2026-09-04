@@ -2216,6 +2216,58 @@ def test_write_artifacts_batch_concurrent_writers_serialize(
     ]
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="flock-based lock is POSIX only",
+)
+def test_output_dir_read_lock_waits_for_in_flight_writer(
+    tmp_path: Path,
+) -> None:
+    """A drift check's read lock blocks until a concurrent writer finishes.
+
+    This is what makes drift checks observe the output tree only before a
+    write starts or after it has fully landed, never a partially updated
+    mix of old and new files.
+    """
+    import multiprocessing
+
+    output_dir = tmp_path / "out"
+    output_dir.mkdir()
+    log_file = tmp_path / "log.txt"
+
+    def hold_write_lock_and_log(
+        output_dir_str: str,
+        log_path_str: str,
+    ) -> None:
+        from agent_def_translator._common import _output_dir_write_lock
+
+        with _output_dir_write_lock(Path(output_dir_str)):
+            with Path(log_path_str).open("a") as f:
+                f.write("write:start\n")
+            time.sleep(0.1)
+            with Path(log_path_str).open("a") as f:
+                f.write("write:end\n")
+
+    ctx = multiprocessing.get_context("fork")
+    writer = ctx.Process(
+        target=hold_write_lock_and_log,
+        args=(str(output_dir), str(log_file)),
+    )
+    writer.start()
+    time.sleep(0.02)
+
+    from agent_def_translator._common import _output_dir_read_lock
+
+    with _output_dir_read_lock(output_dir), log_file.open("a") as f:
+        f.write("read:acquired\n")
+
+    writer.join(timeout=5)
+    assert writer.exitcode == 0
+
+    lines = log_file.read_text().splitlines()
+    assert lines == ["write:start", "write:end", "read:acquired"]
+
+
 def test_load_definition_defaults_schema_version(tmp_path: Path) -> None:
     spec = write_sample(tmp_path)
     definition = load_definition(spec, root_dir=tmp_path)
