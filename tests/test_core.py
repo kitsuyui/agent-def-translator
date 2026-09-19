@@ -1889,6 +1889,39 @@ def test_write_artifacts_batch_replace_failure_restores_original_outputs(
     assert sorted(path.suffix for path in tmp_path.iterdir()) == [".sh", ".sh"]
 
 
+def test_write_artifacts_batch_ignores_backup_cleanup_failure(
+    tmp_path: Path,
+) -> None:
+    import unittest.mock
+
+    from agent_def_translator._common import (
+        GeneratedArtifact,
+        Target,
+        _write_artifacts_batch,
+    )
+
+    artifact = GeneratedArtifact(
+        target=Target.CLAUDE,
+        source_path=tmp_path / "src.toml",
+        output_path=tmp_path / "out.sh",
+        content=b"#!/bin/sh\necho new\n",
+        mode=0o755,
+    )
+    artifact.output_path.write_bytes(b"#!/bin/sh\necho old\n")
+    original_unlink = Path.unlink
+
+    def fail_backup_unlink(self: Path, *, missing_ok: bool = False) -> None:
+        if self.suffix == ".bak":
+            raise OSError("permission denied")
+        original_unlink(self, missing_ok=missing_ok)
+
+    with unittest.mock.patch.object(Path, "unlink", fail_backup_unlink):
+        _write_artifacts_batch([artifact])
+
+    assert artifact.output_path.read_bytes() == b"#!/bin/sh\necho new\n"
+    assert len(list(tmp_path.glob("*.bak"))) == 1
+
+
 def test_yaml_key_safe_and_unsafe() -> None:
     from agent_def_translator._common import _yaml_key
 

@@ -574,7 +574,11 @@ def _write_artifacts_batch(
                 replaced_outputs[i] = True
         for backup in backup_paths:
             if backup is not None:
-                backup.unlink(missing_ok=True)
+                # Replacements are already committed. A failed best-effort
+                # backup cleanup must not turn a successful write into an
+                # error.
+                with contextlib.suppress(OSError):
+                    backup.unlink(missing_ok=True)
     except BaseException:
         _rollback_artifacts_batch(
             artifacts=artifacts,
