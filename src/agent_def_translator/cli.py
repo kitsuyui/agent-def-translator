@@ -5,7 +5,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from agent_def_translator._common import DEPRECATION_REMOVAL_NOTICE
+from agent_def_translator._common import (
+    DEPRECATION_REMOVAL_NOTICE,
+    log_diagnostic_to_stderr,
+)
 from agent_def_translator._version import __version__
 from agent_def_translator.core import (
     DefinitionError,
@@ -268,10 +271,10 @@ def main(argv: list[str] | None = None) -> int:
         _warn_deprecated_command(args, command)
         return _run_command(args, command)
     except DefinitionError as exc:
-        _logger.error("error: %s", exc)
+        log_diagnostic_to_stderr(_logger, logging.ERROR, f"error: {exc}")
         return 2
     except OSError as exc:
-        _logger.error("io-error: %s", exc)
+        log_diagnostic_to_stderr(_logger, logging.ERROR, f"io-error: {exc}")
         return 3
 
 
@@ -314,11 +317,12 @@ def _warn_deprecated_command(
 
 
 def _print_deprecation_warning(replacement: str) -> None:
-    _logger.warning(
-        "warning: this command is deprecated and %s; "
-        "use 'agent-def-translator %s' instead.",
-        DEPRECATION_REMOVAL_NOTICE,
-        replacement,
+    log_diagnostic_to_stderr(
+        _logger,
+        logging.WARNING,
+        "warning: this command is deprecated and "
+        f"{DEPRECATION_REMOVAL_NOTICE}; "
+        f"use 'agent-def-translator {replacement}' instead.",
     )
 
 

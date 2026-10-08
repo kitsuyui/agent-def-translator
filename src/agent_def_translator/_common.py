@@ -40,6 +40,36 @@ _RENAME_EXCHANGE = 0x2
 _libc = ctypes.CDLL(None, use_errno=True)
 _logger = logging.getLogger(__name__)
 
+
+def log_diagnostic_to_stderr(
+    logger: logging.Logger,
+    level: int,
+    message: str,
+) -> None:
+    """Emit a leveled log record that always reaches the current stderr.
+
+    A module-level logger with no handler normally falls back to
+    logging's ``lastResort`` handler, which writes to ``sys.stderr``.
+    That fallback only fires when no handler is attached anywhere in
+    the logger's propagation chain; test runners (pytest) and other
+    callers routinely attach a root handler, which silently swallows
+    the record instead. Binding a handler to the *current* stderr for
+    the duration of this call keeps the diagnostic text contract
+    (byte-for-byte, always on stderr) regardless of ambient logging
+    configuration.
+    """
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(handler)
+    propagate = logger.propagate
+    logger.propagate = False
+    try:
+        logger.log(level, message)
+    finally:
+        logger.propagate = propagate
+        logger.removeHandler(handler)
+
+
 # `schema_version` is the machine-readable generation marker for canonical
 # definition files. It is optional and defaults to CURRENT_SCHEMA_VERSION so
 # existing 0.x definitions keep loading unchanged. Bump
@@ -158,12 +188,12 @@ def _load_target_configs(
 
     if legacy_used:
         joined = ", ".join(f"[{key}]" for key in legacy_used)
-        _logger.warning(
-            "Warning: %s: legacy top-level target tables (%s) are "
-            "deprecated and %s; use [targets.<target>] instead.",
-            path,
-            joined,
-            DEPRECATION_REMOVAL_NOTICE,
+        log_diagnostic_to_stderr(
+            _logger,
+            logging.WARNING,
+            f"Warning: {path}: legacy top-level target tables "
+            f"({joined}) are deprecated and {DEPRECATION_REMOVAL_NOTICE}; "
+            "use [targets.<target>] instead.",
         )
 
     return configs
