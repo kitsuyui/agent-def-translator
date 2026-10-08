@@ -4,6 +4,7 @@ import contextlib
 import ctypes
 import errno
 import json
+import logging
 import os
 import re
 import shutil
@@ -37,6 +38,7 @@ DEPRECATION_REMOVAL_NOTICE = (
 _AT_FDCWD = -100
 _RENAME_EXCHANGE = 0x2
 _libc = ctypes.CDLL(None, use_errno=True)
+_logger = logging.getLogger(__name__)
 
 # `schema_version` is the machine-readable generation marker for canonical
 # definition files. It is optional and defaults to CURRENT_SCHEMA_VERSION so
@@ -156,11 +158,12 @@ def _load_target_configs(
 
     if legacy_used:
         joined = ", ".join(f"[{key}]" for key in legacy_used)
-        print(
-            f"Warning: {path}: legacy top-level target tables ({joined}) are "
-            f"deprecated and {DEPRECATION_REMOVAL_NOTICE}; "
-            "use [targets.<target>] instead.",
-            file=sys.stderr,
+        _logger.warning(
+            "Warning: %s: legacy top-level target tables (%s) are "
+            "deprecated and %s; use [targets.<target>] instead.",
+            path,
+            joined,
+            DEPRECATION_REMOVAL_NOTICE,
         )
 
     return configs

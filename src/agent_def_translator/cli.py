@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import sys
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +23,8 @@ from agent_def_translator.core import (
     validate_plugin_definitions,
     validate_skill_definitions,
 )
+
+_logger = logging.getLogger(__name__)
 
 
 class _DeprecatedHelpAction(argparse.Action):
@@ -266,10 +268,10 @@ def main(argv: list[str] | None = None) -> int:
         _warn_deprecated_command(args, command)
         return _run_command(args, command)
     except DefinitionError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        _logger.error("error: %s", exc)
         return 2
     except OSError as exc:
-        print(f"io-error: {exc}", file=sys.stderr)
+        _logger.error("io-error: %s", exc)
         return 3
 
 
@@ -312,11 +314,11 @@ def _warn_deprecated_command(
 
 
 def _print_deprecation_warning(replacement: str) -> None:
-    print(
-        f"warning: this command is deprecated and "
-        f"{DEPRECATION_REMOVAL_NOTICE}; "
-        f"use 'agent-def-translator {replacement}' instead.",
-        file=sys.stderr,
+    _logger.warning(
+        "warning: this command is deprecated and %s; "
+        "use 'agent-def-translator %s' instead.",
+        DEPRECATION_REMOVAL_NOTICE,
+        replacement,
     )
 
 
