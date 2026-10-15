@@ -11,6 +11,7 @@ from agent_def_translator._common import (
     GeneratedArtifact,
     Target,
     _artifact_has_drift,
+    _check_generated_artifact_count,
     _load_schema_version,
     _load_target_configs,
     _load_toml,
@@ -134,6 +135,10 @@ def generate(
                 content=content,
             )
             artifacts.append(artifact)
+            _check_generated_artifact_count(
+                len(artifacts),
+                definitions_dir=definitions_dir,
+            )
     if write:
         _write_artifacts_batch(artifacts, output_dir=output_dir)
     return artifacts

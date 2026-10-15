@@ -1644,6 +1644,71 @@ def test_validate_plugin_definitions_rejects_multiple_codex_plugins(
         validate_plugin_definitions(definitions_dir)
 
 
+def test_generate_rejects_too_many_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(common, "MAX_BUNDLE_FILE_COUNT", 2)
+    write_sample(tmp_path)
+    # Three targets (claude/codex/copilot) exceed the patched limit of 2.
+    with pytest.raises(DefinitionError, match="exceeds limit"):
+        generate(
+            definitions_dir=tmp_path / "agents",
+            output_dir=tmp_path / "out",
+        )
+
+
+def test_generate_mcp_configs_rejects_too_many_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(common, "MAX_BUNDLE_FILE_COUNT", 2)
+    write_mcp_sample(tmp_path)
+    with pytest.raises(DefinitionError, match="exceeds limit"):
+        generate_mcp_configs(
+            definitions_dir=tmp_path / "mcp",
+            output_dir=tmp_path / "out",
+        )
+
+
+def test_generate_skills_rejects_too_many_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(common, "MAX_BUNDLE_FILE_COUNT", 2)
+    write_skill_sample(tmp_path)
+    with pytest.raises(DefinitionError, match="exceeds limit"):
+        generate_skills(
+            definitions_dir=tmp_path / "skills",
+            output_dir=tmp_path / "out",
+        )
+
+
+def test_generate_plugins_rejects_too_many_artifacts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    write_sample(tmp_path)
+    write_skill_sample(tmp_path)
+    write_mcp_sample(tmp_path)
+    write_plugin_sample(tmp_path)
+    output_dir = tmp_path / "generated"
+    generate(definitions_dir=tmp_path / "agents", output_dir=output_dir)
+    generate_skills(definitions_dir=tmp_path / "skills", output_dir=output_dir)
+    generate_mcp_configs(
+        definitions_dir=tmp_path / "mcp",
+        output_dir=output_dir,
+    )
+
+    # The plugin bundle produces 35 artifacts; with limit=2 it should reject.
+    monkeypatch.setattr(common, "MAX_BUNDLE_FILE_COUNT", 2)
+    with pytest.raises(DefinitionError, match="exceeds limit"):
+        generate_plugins(
+            definitions_dir=tmp_path / "plugins",
+            output_dir=output_dir,
+        )
+
+
 def test_skill_bundle_rejects_too_many_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

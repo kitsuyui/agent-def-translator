@@ -20,6 +20,10 @@ details.
 
 - Optional `schema_version` field on canonical subagent, skill, MCP config, and plugin definitions, giving 0.x format changes an explicit migration boundary instead of generic parse errors ([#68](https://github.com/kitsuyui/agent-def-translator/pull/68))
 
+### Fixed
+
+- Bound in-memory artifact accumulation during subagent/skill/MCP/plugin generation and drift checks to the existing bundle file-count limit, so an unbounded number of definitions can no longer grow translate/diff memory usage without limit.
+
 ## [0.1.2] - 2026-05-06
 
 ### Changed
