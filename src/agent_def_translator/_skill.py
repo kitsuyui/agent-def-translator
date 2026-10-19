@@ -12,6 +12,7 @@ from agent_def_translator._common import (
     GeneratedArtifact,
     Target,
     _artifact_has_drift,
+    _check_generated_artifact_count,
     _is_string_list,
     _is_yaml_value,
     _iter_bundle_files,
@@ -268,6 +269,10 @@ def generate_skills(
                 _skill_bundle_artifacts(definition, output_dir, target),
             )
             artifacts.extend(target_artifacts)
+            _check_generated_artifact_count(
+                len(artifacts),
+                definitions_dir=definitions_dir,
+            )
     if write:
         _write_artifacts_batch(artifacts, output_dir=output_dir)
     return artifacts

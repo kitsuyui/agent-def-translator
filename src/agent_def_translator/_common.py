@@ -237,6 +237,24 @@ def _resolve_relative_path(
     return resolved
 
 
+def _check_generated_artifact_count(
+    count: int,
+    *,
+    definitions_dir: Path,
+) -> None:
+    """Fail fast once accumulated artifacts exceed the bundle file bound.
+
+    Reuses the same MAX_BUNDLE_FILE_COUNT limit already enforced for bundle
+    directory copies, so an unbounded number of definitions cannot grow
+    in-memory artifact buffering without limit.
+    """
+    if count > MAX_BUNDLE_FILE_COUNT:
+        raise DefinitionError(
+            f"{definitions_dir}: generated artifact count exceeds limit"
+            f" (max {MAX_BUNDLE_FILE_COUNT})",
+        )
+
+
 def _iter_bundle_files(source_root: Path) -> Iterator[Path]:
     """Yield regular files under source_root, rejecting symlinks."""
     resolved_root = source_root.resolve()
