@@ -9,6 +9,8 @@ details.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-26
+
 ### Fixed
 
 - Allow `--target vscode` on the CLI, matching the compatibility alias
@@ -17,7 +19,8 @@ details.
 ### Changed
 
 - Make `Target` a plain `Enum` and accept explicit target-name strings at the
-  public Python API boundary.
+  public Python API boundary. Code treating `Target` as a string should use
+  `target.value`; convert a string to an enum with `Target.parse(value)`.
 - Fail package builds early when Git tag metadata is unavailable instead of
   reusing a published fallback version.
 
@@ -60,7 +63,8 @@ details.
 - Initial release: agent definition translator package
   ([#1](https://github.com/kitsuyui/agent-def-translator/pull/1))
 
-[Unreleased]: https://github.com/kitsuyui/agent-def-translator/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/kitsuyui/agent-def-translator/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/kitsuyui/agent-def-translator/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/kitsuyui/agent-def-translator/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/kitsuyui/agent-def-translator/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/kitsuyui/agent-def-translator/commits/v0.1.0
