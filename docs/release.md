@@ -82,6 +82,10 @@ Treat that failure as a checkout-integrity problem. Inspect the release
 workflow's tag visibility before retrying the release rather than debugging it
 as a PyPI credential or upload issue.
 
-The current workflow uses PyPI API tokens. Moving to Trusted Publishing, adding
-artifact attestations, or changing release-note generation should be handled as
-separate release-infrastructure changes.
+The workflow uses Trusted Publishing and produces PyPI attestations. Configure
+trusted publishers on both PyPI and TestPyPI for owner `kitsuyui`, repository
+`agent-def-translator`, workflow filename `pypi-publish.yml`, with no
+environment. Configure TestPyPI only when prereleases will be published there.
+If the OIDC exchange reports `invalid-publisher`, check those exact values
+before rerunning the failed workflow; do not replace the workflow with a local
+upload or an API token.
