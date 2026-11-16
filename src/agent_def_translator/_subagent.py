@@ -6,6 +6,7 @@ from typing import Any
 
 from agent_def_translator._common import (
     LEGACY_TARGET_FIELDS,
+    MAX_BUNDLE_FILE_BYTES,
     NAME_PATTERN,
     DefinitionError,
     GeneratedArtifact,
@@ -223,13 +224,22 @@ def _compose_prompt(definition: AgentDefinition, target: Target) -> str:
             value=append_file,
         )
         try:
-            append = file_path.read_text(encoding="utf-8")
+            with file_path.open("rb") as append_handle:
+                append_bytes = append_handle.read(MAX_BUNDLE_FILE_BYTES + 1)
         except FileNotFoundError as exc:
             msg = (
                 f"{definition.source_path}: prompt_append_file not found: "
                 f"{file_path}"
             )
             raise DefinitionError(msg) from exc
+        if len(append_bytes) > MAX_BUNDLE_FILE_BYTES:
+            msg = (
+                f"{definition.source_path}: prompt_append_file is too large "
+                f"(max {MAX_BUNDLE_FILE_BYTES} bytes): {file_path}"
+            )
+            raise DefinitionError(msg)
+        try:
+            append = append_bytes.decode("utf-8")
         except UnicodeDecodeError as exc:
             msg = (
                 f"{definition.source_path}: prompt_append_file must be valid "
