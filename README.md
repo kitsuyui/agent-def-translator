@@ -192,7 +192,7 @@ coerce user input at the boundary.
   fragments into target-specific plugin bundles. They do not define new agent
   behavior.
 - Concrete workflow skill examples are intentionally tiny, such as
-  `examples/skills/hello/SKILL.md`.
+  `examples/skills/claude/skills/hello/SKILL.md`.
 
 ## Development
 

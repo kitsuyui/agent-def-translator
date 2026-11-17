@@ -120,7 +120,7 @@ uv run pytest -m model_live --run-e2e --run-live --run-model-live
 
 The repository intentionally does not vendor real workflow skills from private
 or project-specific skill sets. Skill examples are limited to tiny fixtures,
-such as `examples/skills/hello/SKILL.md` and
+such as `examples/skills/claude/skills/hello/SKILL.md` and
 `examples/skill-definitions/hello.toml`, so the package stays focused on
 definition translation rather than distributing an opinionated skill library.
 MCP and plugin examples follow the same rule and use generic public fixtures.

@@ -22,7 +22,9 @@ outputs (produced by running the CLI), organized as follows:
 
 | Directory | Produced by |
 | --- | --- |
-| `skills/` | `skill translate --definitions-dir skill-definitions --output-dir skills` |
+| `skills/claude/skills/` | `skill translate --definitions-dir skill-definitions --output-dir skills --target claude` |
 
 The generated directories are checked in as small reference artifacts so readers
-can see what the CLI produces without running it locally.
+can see what the CLI produces without running it locally. Only the Claude target
+is checked in here to keep the example small; the same command without `--target`
+also writes Codex and Copilot projections under `skills/<target>/skills/`.
