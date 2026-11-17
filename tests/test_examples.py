@@ -1,24 +1,51 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
+from agent_def_translator import check_skill_drift
+
 ROOT = Path(__file__).resolve().parents[1]
+GENERATED_SKILL_ROOT = (
+    ROOT / "examples" / "skills" / "claude" / "skills" / "hello"
+)
 
 
-def test_skill_examples_are_limited_to_hello() -> None:
-    skill_dirs = [
-        path.name
-        for path in sorted((ROOT / "examples" / "skills").iterdir())
-        if path.is_dir()
+def test_hello_skill_example_matches_the_current_generator(
+    tmp_path: Path,
+) -> None:
+    output_dir = tmp_path / "skills"
+    shutil.copytree(ROOT / "examples" / "skills", output_dir)
+
+    assert (
+        check_skill_drift(
+            definitions_dir=ROOT / "examples" / "skill-definitions",
+            output_dir=output_dir,
+            targets=("claude",),
+        )
+        == []
+    )
+
+
+def test_hello_skill_example_includes_its_bundle() -> None:
+    files = [
+        path.relative_to(GENERATED_SKILL_ROOT).as_posix()
+        for path in sorted(GENERATED_SKILL_ROOT.rglob("*"))
+        if path.is_file()
     ]
 
-    assert skill_dirs == ["hello"]
+    assert files == [
+        "SKILL.md",
+        "assets/sample.txt",
+        "references/usage.md",
+        "runbook.md",
+        "scripts/hello.sh",
+        "templates/greeting.txt",
+    ]
 
 
 def test_hello_skill_example_is_project_agnostic() -> None:
-    text = (ROOT / "examples" / "skills" / "hello" / "SKILL.md").read_text(
-        encoding="utf-8",
-    )
+    text = (GENERATED_SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
 
     forbidden_terms = [
         "ss",
