@@ -5,6 +5,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_readme_links_to_examples_index() -> None:
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "[Examples](examples/README.md)" in text
+
+
 def test_skill_examples_are_limited_to_hello() -> None:
     skill_dirs = [
         path.name

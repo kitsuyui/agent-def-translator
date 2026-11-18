@@ -154,6 +154,8 @@ uvx agent-def-translator plugin translate \
   such as MCP.
 - [Development](docs/development.md): local setup, tests, checks, and optional
   E2E smoke tests.
+- [Examples](examples/README.md): canonical definition sources and checked-in
+  generated reference artifacts.
 - [Release process](docs/release.md): version policy, release checklist,
   prerelease flow, and publish failure notes.
 
