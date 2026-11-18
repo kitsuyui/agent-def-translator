@@ -3,7 +3,13 @@
 # (e.g., examples/skills/claude/skills/hello/SKILL.md for Claude Code).
 name = "hello"
 description = "Say hello when the user asks for a greeting."
-instructions = "Reply with one short greeting."
+instructions = """
+Reply with one short greeting.
+
+- Follow [the runbook](runbook.md) for the greeting steps.
+- See [usage guidance](references/usage.md) before using the skill.
+- The included [greeting template](templates/greeting.txt), [hello script](scripts/hello.sh), and [sample asset](assets/sample.txt) are optional resources.
+"""
 source_dir = "hello"
 user_invocable = true
 disable_model_invocation = false
