@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -18,6 +19,43 @@ def run_script(*args: str) -> None:
 @pytest.mark.e2e
 def test_e2e_smoke() -> None:
     run_script("bash", "scripts/e2e-smoke.sh")
+    assert not (PROJECT_ROOT / ".tmp" / "e2e-smoke").exists()
+
+
+@pytest.mark.parametrize(
+    ("script", "work_root_environment"),
+    [
+        ("scripts/e2e-smoke.sh", "E2E_WORK_ROOT"),
+        ("scripts/e2e-model-live.sh", "E2E_MODEL_LIVE_WORK_ROOT"),
+    ],
+)
+def test_e2e_scripts_clean_work_root_after_failure(
+    tmp_path: Path,
+    script: str,
+    work_root_environment: str,
+) -> None:
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_uv = fake_bin / "uv"
+    fake_uv.write_text("#!/usr/bin/env sh\nexit 1\n", encoding="utf-8")
+    fake_uv.chmod(0o755)
+    work_root = tmp_path / "work-root"
+    environment = os.environ | {
+        "PATH": f"{fake_bin}{os.pathsep}{os.environ.get('PATH', '')}",
+        work_root_environment: str(work_root),
+    }
+    bash = shutil.which("bash")
+    assert bash is not None
+
+    result = subprocess.run(  # noqa: S603
+        (bash, script),
+        cwd=PROJECT_ROOT,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode != 0
+    assert not work_root.exists()
 
 
 @pytest.mark.e2e

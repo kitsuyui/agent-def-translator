@@ -73,6 +73,15 @@ while [ "$#" -gt 0 ]; do
 done
 
 cd "${SOURCE_ROOT}"
+
+cleanup_work_root() {
+  local exit_status=$?
+  rm -rf "${WORK_ROOT}"
+  return "${exit_status}"
+}
+
+trap cleanup_work_root EXIT
+
 rm -rf "${WORK_ROOT}"
 mkdir -p "${WORK_ROOT}/definitions/agents"
 mkdir -p "${WORK_ROOT}/definitions/skills/adt-live-skill/references"
