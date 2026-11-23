@@ -638,6 +638,33 @@ def test_non_utf8_prompt_append_file_fails(tmp_path: Path) -> None:
         render(definition, Target.CLAUDE)
 
 
+def test_oversized_prompt_append_file_fails(tmp_path: Path) -> None:
+    spec = tmp_path / "bad.toml"
+    spec.write_text(
+        textwrap.dedent(
+            """
+            name = "bad"
+            description = "Bad"
+            instructions = "Base instructions"
+
+            [targets.claude]
+            prompt_append_file = "appendix.md"
+            """,
+        ).strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    limit = common.MAX_BUNDLE_FILE_BYTES
+    (tmp_path / "appendix.md").write_bytes(b"a" * (limit + 1))
+    definition = load_definition(spec, root_dir=tmp_path)
+
+    with pytest.raises(
+        DefinitionError,
+        match="prompt_append_file is too large",
+    ):
+        render(definition, Target.CLAUDE)
+
+
 @pytest.mark.parametrize(
     "path_kind",
     ["absolute", "windows_absolute", "parent"],
